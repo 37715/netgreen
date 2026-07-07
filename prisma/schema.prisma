@@ -1,0 +1,189 @@
+// EHW Books database schema
+// SQLite for local-first. Switch `provider` to "postgresql" when going online.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Settings {
+  id           Int      @id @default(1)
+  businessName String   @default("EHW Landscapes")
+  employeeRate Float    @default(20)
+  currency     String   @default("GBP")
+  updatedAt    DateTime @updatedAt
+}
+
+model Crew {
+  id        Int            @id @default(autoincrement())
+  name      String
+  members   String         @default("")
+  colour    String         @default("#16a34a")
+  active    Boolean        @default(true)
+  sortOrder Int            @default(0)
+  customers Customer[]
+  jobs      ScheduledJob[]
+  dayCrews  DayCrew[]
+  createdAt DateTime       @default(now())
+}
+
+// Which crews are working on a specific calendar day (1, 2, or more).
+model DayCrew {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  crew      Crew     @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  crewId    Int
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([date, crewId])
+  @@index([date])
+}
+
+enum Recurrence {
+  NONE
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+}
+
+model Customer {
+  id               Int            @id @default(autoincrement())
+  name             String
+  contact          String         @default("")
+  address          String         @default("")
+  notes            String         @default("")
+  recurrence       Recurrence     @default(NONE)
+  recurrenceAnchor DateTime?
+  defaultPrice     Float?
+  defaultCrew      Crew?          @relation(fields: [defaultCrewId], references: [id])
+  defaultCrewId    Int?
+  active           Boolean        @default(true)
+  jobs             ScheduledJob[]
+  projects         Project[]
+  createdAt        DateTime       @default(now())
+}
+
+enum JobStatus {
+  SCHEDULED
+  DONE
+  SKIPPED
+}
+
+enum PricingType {
+  FIXED
+  HOURLY
+}
+
+model ScheduledJob {
+  id          Int         @id @default(autoincrement())
+  date        DateTime
+  title       String
+  price       Float       @default(0)
+  pricingType PricingType @default(FIXED)
+  hourlyRate  Float?
+  hours       Float?
+  workers     Int?
+  status      JobStatus @default(SCHEDULED)
+  sortOrder   Int       @default(0)
+  notes       String    @default("")
+  completedAt DateTime?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  customerId  Int?
+  crew        Crew?     @relation(fields: [crewId], references: [id])
+  crewId      Int?
+  project     Project?  @relation(fields: [projectId], references: [id])
+  projectId   Int?
+  // The customer this recurring instance was generated from (for dedupe).
+  recurringSourceCustomerId Int?
+  createdAt   DateTime  @default(now())
+
+  @@index([date])
+  @@index([recurringSourceCustomerId, date])
+}
+
+enum ProjectStatus {
+  QUOTE
+  ACTIVE
+  DONE
+  PAID
+}
+
+model Project {
+  id          Int            @id @default(autoincrement())
+  title       String
+  status      ProjectStatus  @default(ACTIVE)
+  quotedPrice Float          @default(0)
+  notes       String         @default("")
+  startDate   DateTime?
+  customer    Customer?      @relation(fields: [customerId], references: [id])
+  customerId  Int?
+  costs       ProjectCost[]
+  payments    Payment[]
+  jobs        ScheduledJob[]
+  createdAt   DateTime       @default(now())
+}
+
+enum CostCategory {
+  MATERIALS
+  WAGES
+  HIRE
+  WASTE
+  OTHER
+}
+
+model ProjectCost {
+  id           Int          @id @default(autoincrement())
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    Int
+  category     CostCategory @default(MATERIALS)
+  description  String       @default("")
+  amount       Float        @default(0)
+  reimbursable Boolean      @default(false)
+  date         DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId Int
+  amount    Float    @default(0)
+  date      DateTime @default(now())
+  method    String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
+enum OverheadCategory {
+  TOOLS
+  FUEL
+  INSURANCE
+  VAN
+  SOFTWARE
+  OTHER
+}
+
+// A deleted occurrence of a recurring customer's round, so it is not
+// auto-recreated on the next calendar load.
+model ScheduleException {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  date       DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, date])
+}
+
+model Overhead {
+  id          Int              @id @default(autoincrement())
+  date        DateTime         @default(now())
+  category    OverheadCategory @default(OTHER)
+  description String           @default("")
+  amount      Float            @default(0)
+  createdAt   DateTime         @default(now())
+}

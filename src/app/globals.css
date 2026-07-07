@@ -1,26 +1,125 @@
 @import "tailwindcss";
 
+@theme {
+  /* Evergreen — primary brand (groundwork, hedges, turf) */
+  --color-brand-50: #eef6f1;
+  --color-brand-100: #d6ebdd;
+  --color-brand-200: #aed8bd;
+  --color-brand-300: #7cbd96;
+  --color-brand-400: #479d6c;
+  --color-brand-500: #21804f;
+  --color-brand-600: #15663d;
+  --color-brand-700: #114f30;
+  --color-brand-800: #0e3f27;
+  --color-brand-900: #0b3220;
+
+  /* Cut-grass lime — accent, used sparingly */
+  --color-lime-100: #eef7d6;
+  --color-lime-200: #dcefad;
+  --color-lime-400: #9bd026;
+  --color-lime-500: #7cb518;
+  --color-lime-600: #639312;
+
+  /* Earth / clay — money owed & attention */
+  --color-clay-100: #f7e6dc;
+  --color-clay-500: #c2540c;
+  --color-clay-600: #a3450a;
+
+  /* Stone neutrals (concrete / paving) */
+  --color-stone-50: #f5f6f3;
+  --color-stone-100: #eceee8;
+  --color-stone-200: #dde1d8;
+  --color-stone-300: #c4cabd;
+  --color-stone-400: #97a08e;
+  --color-stone-500: #6b7464;
+  --color-stone-600: #515a4b;
+  --color-stone-700: #3c4338;
+  --color-stone-800: #272c25;
+  --color-stone-900: #161a14;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-geist-sans), sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #eceee8;
+  --foreground: #161a14;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--background);
+  color: var(--foreground);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-lime-200);
+  color: var(--color-brand-900);
+}
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(22,26,20,0.04)];
+  }
+
+  .stat-card {
+    @apply rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-[0_1px_2px_rgba(22,26,20,0.04)];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-brand-700 text-white hover:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-stone-300 bg-white text-stone-700 hover:bg-stone-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-stone-600 hover:bg-stone-100;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-clay-100 bg-white text-clay-600 hover:bg-clay-100;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-500;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  /* Money in a ledger / receipt style — ties to the bookkeeping subject */
+  .ledger {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-stone-500;
+  }
 }

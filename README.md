@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EHW Books
 
-## Getting Started
+A simple, phone-friendly tool for **EHW Landscapes** to stop being in the dark on
+money. Schedule the day's jobs, tick them off on-site, and the app works out your
+**revenue, costs, profit and per-job margins** automatically.
 
-First, run the development server:
+Built for Ellis & Hugo Wheeler.
+
+## What it does
+
+- **Calendar / run sheets** — each crew gets an ordered list of jobs per day. Tick
+  a job off on your phone and it instantly counts as income.
+- **Recurring rounds** — set a customer to weekly / fortnightly / monthly and they
+  auto-fill onto the calendar. No re-typing the round.
+- **Quick income** — everyday maintenance jobs are near-instant to log.
+- **Projects** — bigger jobs (patios, fencing, turfing) track materials, employee
+  wages, hire, waste and payments → **profit & margin %**.
+- **Overheads** — general costs not tied to a job (tools, fuel, insurance, van,
+  subscriptions).
+- **Dashboard** — week / month / year view of revenue, costs, profit, a project
+  league table (best/worst margins) and who still owes you money.
+
+## How margins are worked out
+
+`Margin = (money in − money out) ÷ money in`
+
+Your and Hugo's time is **not** counted as a cost — that's your profit. Only real
+money out counts (materials, employee wages, hire, waste).
+
+**Reimbursed materials:** if a customer pays you back for materials, log the cost on
+the project *and* log their repayment as a payment. Profit then stays just your
+markup, while turnover stays honest.
+
+## Running it
+
+Requires [Node.js](https://nodejs.org) 20+.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npx prisma migrate dev   # first time only: creates the database
+npm run seed             # optional: adds your 2 crews + sample customers
+npm run dev              # start it
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open **http://localhost:3000**. On your phone, use the laptop's network
+address (shown in the terminal, e.g. `http://192.168.0.144:3000`) while on the
+same Wi-Fi.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For a faster, optimised version:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Your data
 
-To learn more about Next.js, take a look at the following resources:
+Everything lives in a single file: `prisma/dev.db` on this computer. **Back this
+file up** (copy it somewhere safe) to protect your records. It is deliberately kept
+out of git.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Going online later
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The app is built local-first but ready to go online so both brothers share one
+live set of numbers from anywhere:
 
-## Deploy on Vercel
+1. Change the Prisma datasource `provider` from `sqlite` to `postgresql`.
+2. Point `DATABASE_URL` at a hosted database.
+3. Deploy (e.g. Vercel or Railway) and add a simple shared login.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Planned for later (not in v1)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Bank import, receipt photos, quote/invoice PDFs, VAT, payroll.

@@ -1,0 +1,5 @@
+# Never ship local env files to Vercel — production uses dashboard env vars only.
+# Shipping .env (with AUTH_DISABLED) overrode the Node runtime and disabled login.
+.env
+.env.local
+.env.*.local

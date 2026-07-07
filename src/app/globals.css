@@ -69,6 +69,40 @@ body {
     outline-offset: 2px;
     border-radius: 4px;
   }
+
+  /* Show the pointer (hand) cursor on anything interactive. */
+  button,
+  a,
+  label,
+  summary,
+  select,
+  [role="button"],
+  [role="link"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="color"],
+  input[type="range"] {
+    cursor: pointer;
+  }
+
+  /* Disabled / busy controls should never look clickable. */
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"],
+  [aria-busy="true"] {
+    cursor: not-allowed;
+  }
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

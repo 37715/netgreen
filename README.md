@@ -33,13 +33,15 @@ markup, while turnover stays honest.
 
 ## Running it
 
-Requires [Node.js](https://nodejs.org) 20+.
+Requires [Node.js](https://nodejs.org) 20+ and a PostgreSQL database
+(use a free [Neon](https://neon.tech) branch for local dev too).
 
 ```bash
 npm install
-npx prisma migrate dev   # first time only: creates the database
-npm run seed             # optional: adds your 2 crews + sample customers
-npm run dev              # start it
+# set DATABASE_URL in .env to your Postgres connection string
+npm run db:push         # first time only: creates the tables
+npm run seed            # optional: adds your 2 crews + sample customers
+npm run dev             # start it
 ```
 
 Then open **http://localhost:3000**. On your phone, use the laptop's network

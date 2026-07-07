@@ -1,12 +1,12 @@
 // netgreen database schema
-// SQLite for local-first. Switch `provider` to "postgresql" when going online.
+// PostgreSQL (Neon) for shared online access. DATABASE_URL comes from env.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

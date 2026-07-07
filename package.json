@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "wipe": "tsx scripts/wipe.ts",
-    "db:reset": "prisma migrate reset --force"
+    "db:push": "prisma db push",
+    "db:reset": "prisma db push --force-reset"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

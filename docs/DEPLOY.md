@@ -33,19 +33,16 @@ Only you and your brother can access the live app. Everyone else is blocked at l
 
 1. Create a project at [neon.tech](https://neon.tech)
 2. Copy the **connection string** (pooled URL for serverless)
-3. In `prisma/schema.prisma`, change:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
+3. Prisma is already set to `postgresql` — nothing to change in the schema.
 4. Push schema to Neon (from your machine, with `DATABASE_URL` set to Neon):
    ```bash
-   npx prisma db push
+   npm run db:push
    npm run seed   # optional: crews + sample data
    ```
-5. **Migrate your local data** (optional): export/import or re-run the ICS import on production.
+5. **Load your calendar:** re-run the Google Calendar import against Neon:
+   ```bash
+   npx tsx scripts/import-ics.ts "D:\downloads\ehwlandscapes@gmail.com.ical\ehwlandscapes@gmail.com.ics" --all --to=2026-09-01
+   ```
 
 ---
 

@@ -1,6 +1,6 @@
-# EHW Books
+# netgreen
 
-A simple, phone-friendly tool for **EHW Landscapes** to stop being in the dark on
+A simple, phone-friendly tool for **netgreen** to stop being in the dark on
 money. Schedule the day's jobs, tick them off on-site, and the app works out your
 **revenue, costs, profit and per-job margins** automatically.
 

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export async function updateSettings(formData: FormData) {
   const businessName =
-    String(formData.get("businessName") || "").trim() || "EHW Landscapes";
+    String(formData.get("businessName") || "").trim() || "netgreen";
   const employeeRate = parseAmount(formData.get("employeeRate"));
   await prisma.settings.upsert({
     where: { id: 1 },

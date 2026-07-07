@@ -21,8 +21,8 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "EHW Books",
-  description: "Jobs, scheduling, costs, margins and profit for EHW Landscapes",
+  title: "netgreen",
+  description: "Jobs, scheduling, costs, margins and profit for netgreen",
 };
 
 export const viewport: Viewport = {

@@ -34,7 +34,7 @@ function Wordmark({ businessName }: { businessName: string }) {
       </span>
       <div className="leading-none">
         <div className="font-display text-lg font-extrabold tracking-tight text-brand-900">
-          EHW<span className="text-lime-600">.</span>
+          netgreen<span className="text-lime-600">.</span>
         </div>
         <div className="mt-0.5 text-[11px] font-medium text-stone-500 truncate max-w-[150px]">
           {businessName}

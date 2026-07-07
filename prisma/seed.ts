@@ -6,7 +6,7 @@ async function main() {
   await prisma.settings.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1, businessName: "EHW Landscapes", employeeRate: 20 },
+    create: { id: 1, businessName: "netgreen", employeeRate: 20 },
   });
 
   const crewCount = await prisma.crew.count();

@@ -4,6 +4,6 @@ export async function getSettings() {
   const existing = await prisma.settings.findUnique({ where: { id: 1 } });
   if (existing) return existing;
   return prisma.settings.create({
-    data: { id: 1, businessName: "EHW Landscapes", employeeRate: 20 },
+    data: { id: 1, businessName: "netgreen", employeeRate: 20 },
   });
 }

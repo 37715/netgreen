@@ -1,4 +1,4 @@
-// EHW Books database schema
+// netgreen database schema
 // SQLite for local-first. Switch `provider` to "postgresql" when going online.
 
 generator client {
@@ -12,7 +12,7 @@ datasource db {
 
 model Settings {
   id           Int      @id @default(1)
-  businessName String   @default("EHW Landscapes")
+  businessName String   @default("netgreen")
   employeeRate Float    @default(20)
   currency     String   @default("GBP")
   updatedAt    DateTime @updatedAt

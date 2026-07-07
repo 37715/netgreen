@@ -111,7 +111,7 @@ export default async function SettingsPage() {
       </div>
 
       <p className="mt-6 text-xs text-stone-400">
-        EHW Books · local-first. Your data lives in <code>prisma/dev.db</code> on this computer.
+        netgreen · local-first. Your data lives in <code>prisma/dev.db</code> on this computer.
         Back that file up to keep your records safe.
       </p>
     </div>

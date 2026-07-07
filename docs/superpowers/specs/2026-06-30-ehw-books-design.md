@@ -1,11 +1,11 @@
-# EHW Books — Design Spec
+# netgreen — Design Spec
 
 Date: 2026-06-30
-Owner: Ellis Wheeler (EHW Landscapes, partnership with Hugo Wheeler)
+Owner: Ellis Wheeler (netgreen, partnership with Hugo Wheeler)
 
 ## Purpose
 
-EHW Landscapes is busy but "in the dark" on money. This tool moves the business
+netgreen is busy but "in the dark" on money. This tool moves the business
 from busy-tradesman mode into business mode by making revenue, costs, profit and
 per-job margins **measurable and repeatable** — driven by the daily job calendar
 so there is little to no separate bookkeeping.

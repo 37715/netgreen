@@ -115,7 +115,7 @@ export default async function SettingsPage() {
       <div className="card p-5 mt-4">
         <h2 className="text-sm font-bold text-stone-800 mb-1">Access</h2>
         <p className="text-xs text-stone-500 mb-3">
-          Only approved Google accounts can use netgreen when deployed.
+          Only approved Google accounts can sign in. Everyone shares the same calendar and numbers.
         </p>
         {isAuthEnabled() ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm">

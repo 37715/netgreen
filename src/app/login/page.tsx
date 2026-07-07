@@ -37,7 +37,7 @@ export default async function LoginPage({
           netgreen<span className="text-lime-600">.</span>
         </h1>
         <p className="mt-2 text-sm text-stone-500">
-          Private access for Ellis &amp; Hugo only.
+          Approved team only — one shared account for the business.
         </p>
 
         {!authOn ? (

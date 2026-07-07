@@ -68,7 +68,7 @@ Use `AUTH_DISABLED=false` and full OAuth vars when testing login locally.
 | `AUTH_SECRET` | Random string — run `npx auth secret` |
 | `AUTH_GOOGLE_ID` | From Google Cloud |
 | `AUTH_GOOGLE_SECRET` | From Google Cloud |
-| `ALLOWED_EMAILS` | `ellis@email.com,hugo@email.com` (your real addresses) |
+| `ALLOWED_EMAILS` | `producedbyellis9@gmail.com,ehwlandscapes@gmail.com,hugow0604@gmail.com` |
 
 **Do not** set `AUTH_DISABLED` on Vercel.
 
@@ -99,15 +99,16 @@ Add to `package.json` if Vercel doesn't run generate automatically:
 - **Allowlist** — `signIn` callback rejects any email not in `ALLOWED_EMAILS`, even with a valid Google account
 - **HTTPS** — Vercel enforces TLS
 
-To add/remove someone later, edit `ALLOWED_EMAILS` in Vercel and redeploy (or use the same two emails forever).
+To add/remove someone later, edit `ALLOWED_EMAILS` in Vercel and redeploy.
 
 ---
 
 ## 6. After deploy checklist
 
-- [ ] Sign in with your Google account → works
+- [ ] Sign in with **producedbyellis9@gmail.com** → works
+- [ ] Sign in with **ehwlandscapes@gmail.com** → works (same data)
+- [ ] Sign in with **hugow0604@gmail.com** → works (same data)
 - [ ] Sign in with a random Gmail → **blocked** (Access denied)
-- [ ] Brother signs in with his allowlisted email → works
 - [ ] Calendar / jobs load from Neon DB
 - [ ] Back up Neon periodically (Neon dashboard → backups on paid; or export data)
 

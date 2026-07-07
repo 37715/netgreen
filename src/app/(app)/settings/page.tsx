@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { auth, isAuthEnabled } from "@/auth";
 import { PageHeader } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
+import { SignOutButton } from "@/components/SignOutButton";
 import {
   updateSettings,
   createCrew,
@@ -108,6 +110,25 @@ export default async function SettingsPage() {
             </form>
           </Collapsible>
         </div>
+      </div>
+
+      <div className="card p-5 mt-4">
+        <h2 className="text-sm font-bold text-stone-800 mb-1">Access</h2>
+        <p className="text-xs text-stone-500 mb-3">
+          Only approved Google accounts can use netgreen when deployed.
+        </p>
+        {isAuthEnabled() ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span className="text-stone-600">
+              Signed in as <strong>{(await auth())?.user?.email ?? "—"}</strong>
+            </span>
+            <SignOutButton />
+          </div>
+        ) : (
+          <p className="text-sm text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
+            Auth is off locally (<code className="text-xs">AUTH_DISABLED=true</code> or missing OAuth env).
+          </p>
+        )}
       </div>
 
       <p className="mt-6 text-xs text-stone-400">

@@ -1,0 +1,71 @@
+import Link from "next/link";
+import { auth, isAuthEnabled } from "@/auth";
+import { signInWithGoogle } from "@/app/actions/auth";
+import { LeafIcon } from "@/components/icons";
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const sp = await searchParams;
+  const session = await auth();
+  const authOn = isAuthEnabled();
+
+  if (session?.user) {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center px-4">
+        <p className="text-sm text-stone-600">
+          Signed in as <strong>{session.user.email}</strong>
+        </p>
+        <Link href="/calendar" className="btn-primary mt-4">
+          Open calendar
+        </Link>
+      </div>
+    );
+  }
+
+  const denied = sp.error === "AccessDenied";
+
+  return (
+    <div className="flex min-h-full flex-col items-center justify-center bg-stone-50 px-4">
+      <div className="card w-full max-w-sm p-8 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-lime-400">
+          <LeafIcon className="h-8 w-8" />
+        </div>
+        <h1 className="mt-5 font-display text-2xl font-extrabold text-brand-900">
+          netgreen<span className="text-lime-600">.</span>
+        </h1>
+        <p className="mt-2 text-sm text-stone-500">
+          Private access for Ellis &amp; Hugo only.
+        </p>
+
+        {!authOn ? (
+          <div className="mt-6 rounded-xl bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+            <p className="font-semibold">Auth not configured</p>
+            <p className="mt-1 text-amber-800/80">
+              Set Google OAuth env vars, or use{" "}
+              <code className="text-xs">AUTH_DISABLED=true</code> for local dev.
+            </p>
+            <Link href="/calendar" className="btn-primary mt-4 inline-flex w-full justify-center">
+              Continue (dev)
+            </Link>
+          </div>
+        ) : (
+          <>
+            {denied && (
+              <p className="mt-4 rounded-xl bg-clay-100 px-3 py-2 text-sm text-clay-600">
+                That Google account isn&apos;t allowed. Use your approved work email.
+              </p>
+            )}
+            <form className="mt-6" action={signInWithGoogle}>
+              <button type="submit" className="btn-primary w-full justify-center">
+                Sign in with Google
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

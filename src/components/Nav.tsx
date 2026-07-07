@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignOutButton } from "@/components/SignOutButton";
 import {
   HomeIcon,
   CalendarIcon,
@@ -73,8 +74,9 @@ export function Sidebar({ businessName }: { businessName: string }) {
           );
         })}
       </nav>
-      <div className="px-5 py-4 text-[11px] text-stone-400 border-t border-stone-100">
-        Ellis &amp; Hugo Wheeler
+      <div className="px-5 py-4 text-[11px] text-stone-400 border-t border-stone-100 space-y-2">
+        <div>Ellis &amp; Hugo Wheeler</div>
+        <SignOutButton />
       </div>
     </aside>
   );

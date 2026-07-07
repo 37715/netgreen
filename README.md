@@ -59,14 +59,23 @@ Everything lives in a single file: `prisma/dev.db` on this computer. **Back this
 file up** (copy it somewhere safe) to protect your records. It is deliberately kept
 out of git.
 
-## Going online later
+## Security (you + your brother only)
 
-The app is built local-first but ready to go online so both brothers share one
-live set of numbers from anywhere:
+When deployed, netgreen uses **Google sign-in** with an **email allowlist** — only
+addresses in `ALLOWED_EMAILS` can get in. Everyone else sees “access denied” even
+with a valid Google account.
 
-1. Change the Prisma datasource `provider` from `sqlite` to `postgresql`.
-2. Point `DATABASE_URL` at a hosted database.
-3. Deploy (e.g. Vercel or Railway) and add a simple shared login.
+Locally, set `AUTH_DISABLED=true` in `.env` until OAuth is configured.
+
+Full deploy guide: **[docs/DEPLOY.md](docs/DEPLOY.md)** (Vercel + Neon + Google OAuth).
+
+## Going online
+
+1. Neon Postgres for the shared database
+2. Vercel for hosting
+3. Google OAuth + `ALLOWED_EMAILS` for private access
+
+See **docs/DEPLOY.md** for step-by-step instructions.
 
 ## Planned for later (not in v1)
 

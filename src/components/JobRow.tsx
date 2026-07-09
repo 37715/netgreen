@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { setJobStatus, moveJob, deleteJob } from "@/app/actions/jobs";
 import { InlinePrice } from "@/components/InlinePrice";
 import { formatHourlyBreakdown } from "@/lib/money";
@@ -6,7 +9,10 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   TrashIcon,
+  GripIcon,
 } from "@/components/icons";
+
+export type CrewOption = { id: number | null; name: string; colour: string };
 
 export type JobRowData = {
   id: number;
@@ -25,14 +31,98 @@ export function JobRow({
   job,
   isFirst,
   isLast,
+  draggable = false,
+  dragging = false,
+  onDragStart,
+  onDragEnd,
+  crewOptions,
+  currentCrewId,
+  onAssign,
 }: {
   job: JobRowData;
   isFirst: boolean;
   isLast: boolean;
+  draggable?: boolean;
+  dragging?: boolean;
+  onDragStart?: (id: number) => void;
+  onDragEnd?: () => void;
+  crewOptions?: CrewOption[];
+  currentCrewId?: number | null;
+  onAssign?: (crewId: number | null) => void;
 }) {
   const done = job.status === "DONE";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const canAssign = !!onAssign && (crewOptions?.length ?? 0) > 0;
+
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div
+      className={`flex items-center gap-2 py-2.5 ${
+        dragging ? "opacity-40" : ""
+      }`}
+    >
+      {draggable && (
+        <div className="relative shrink-0">
+          <span
+            draggable
+            role="button"
+            tabIndex={0}
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(job.id));
+              onDragStart?.(job.id);
+            }}
+            onDragEnd={() => onDragEnd?.()}
+            onClick={() => canAssign && setMenuOpen((o) => !o)}
+            aria-label="Drag or tap to move to another crew"
+            className="flex h-9 w-5 cursor-grab items-center justify-center text-stone-300 hover:text-stone-500 active:cursor-grabbing"
+          >
+            <GripIcon className="h-4 w-4" />
+          </span>
+          {menuOpen && canAssign && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-10 cursor-default"
+                aria-label="Close menu"
+                onClick={() => setMenuOpen(false)}
+              />
+              <div className="absolute left-0 top-9 z-20 min-w-[160px] rounded-xl border border-stone-200 bg-white py-1 shadow-lg">
+                <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+                  Move to
+                </div>
+                {crewOptions!.map((c) => {
+                  const isCurrent = (currentCrewId ?? null) === c.id;
+                  return (
+                    <button
+                      key={String(c.id)}
+                      type="button"
+                      disabled={isCurrent}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (!isCurrent) onAssign!(c.id);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold ${
+                        isCurrent
+                          ? "text-stone-300"
+                          : "text-stone-700 hover:bg-stone-50"
+                      }`}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: c.colour }}
+                      />
+                      {c.name}
+                      {isCurrent && (
+                        <span className="ml-auto text-xs">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <form action={setJobStatus} className="shrink-0">
         <input type="hidden" name="id" value={job.id} />
         <input type="hidden" name="status" value={done ? "SCHEDULED" : "DONE"} />

@@ -140,6 +140,7 @@ export default async function DashboardPage({
           <dl className="mt-3 space-y-2.5 text-sm">
             <Row label="Overheads" value={formatMoney(summary.overheadCosts, currency)} />
             <Row label="Project materials & costs" value={formatMoney(summary.projectCosts, currency)} />
+            <Row label="Extra crew wages" value={formatMoney(summary.labourCosts, currency)} />
             <Total label="Costs" value={formatMoney(summary.costs, currency)} />
           </dl>
 

@@ -8,6 +8,7 @@ export type RangeSummary = {
   revenue: number;
   overheadCosts: number;
   projectCosts: number;
+  labourCosts: number;
   costs: number;
   profit: number;
   jobsDone: number;
@@ -23,7 +24,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const gte = startOfDay(from);
   const lte = endOfDay(to);
 
-  const [doneJobs, payments, overheads, projectCosts] = await Promise.all([
+  const [doneJobs, payments, overheads, projectCosts, labour] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { status: "DONE", date: { gte, lte } },
       select: { price: true },
@@ -40,15 +41,20 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
       where: { date: { gte, lte } },
       select: { amount: true },
     }),
+    prisma.crewLabour.findMany({
+      where: { date: { gte, lte } },
+      select: { amount: true },
+    }),
   ]);
 
   const quickIncome = sum(doneJobs.map((j) => j.price));
   const projectIncome = sum(payments.map((p) => p.amount));
   const overheadCosts = sum(overheads.map((o) => o.amount));
   const projectCostsTotal = sum(projectCosts.map((c) => c.amount));
+  const labourCosts = sum(labour.map((l) => l.amount));
 
   const revenue = quickIncome + projectIncome;
-  const costs = overheadCosts + projectCostsTotal;
+  const costs = overheadCosts + projectCostsTotal + labourCosts;
 
   return {
     quickIncome,
@@ -56,6 +62,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     revenue,
     overheadCosts,
     projectCosts: projectCostsTotal,
+    labourCosts,
     costs,
     profit: revenue - costs,
     jobsDone: doneJobs.length,

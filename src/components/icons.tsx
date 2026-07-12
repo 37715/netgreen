@@ -114,6 +114,19 @@ export function TrashIcon({ className = base }: IconProps) {
   );
 }
 
+export function GripIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <circle cx="9" cy="6" r="1.6" />
+      <circle cx="15" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" />
+      <circle cx="15" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" />
+      <circle cx="15" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
 export function LeafIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

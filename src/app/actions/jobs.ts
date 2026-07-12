@@ -289,14 +289,24 @@ export async function reassignCrew(formData: FormData) {
   const id = Number(formData.get("id"));
   const crewIdRaw = formData.get("crewId");
   const crewId = crewIdRaw ? Number(crewIdRaw) : null;
+  await assignJobToCrew(id, crewId);
+}
+
+/**
+ * Move a job onto a crew (or to "unassigned" when crewId is null). Called
+ * directly from the drag-and-drop board on the day view.
+ */
+export async function assignJobToCrew(id: number, crewId: number | null) {
   const job = await prisma.scheduledJob.findUnique({ where: { id } });
   if (!job) return;
+  if ((job.crewId ?? null) === (crewId ?? null)) return;
   await prisma.scheduledJob.update({
     where: { id },
     data: {
-      crewId: crewId,
+      crewId,
       sortOrder: await nextSortOrder(job.date, crewId),
     },
   });
   revalidatePath("/calendar");
+  revalidatePath("/");
 }

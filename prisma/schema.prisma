@@ -29,7 +29,22 @@ model Crew {
   customers Customer[]
   jobs      ScheduledJob[]
   dayCrews  DayCrew[]
+  labour    CrewLabour[]
   createdAt DateTime       @default(now())
+}
+
+// An extra worker paid for a specific crew on a specific day. The pay is a
+// cost that reduces that day's profit (and feeds into the range summary).
+model CrewLabour {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  crew      Crew?    @relation(fields: [crewId], references: [id], onDelete: SetNull)
+  crewId    Int?
+  name      String   @default("")
+  amount    Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([date])
 }
 
 // Which crews are working on a specific calendar day (1, 2, or more).

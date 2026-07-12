@@ -13,7 +13,8 @@ import {
   formatDayLabel,
   formatDayShort,
 } from "@/lib/dates";
-import { JobRow, JobRowData } from "@/components/JobRow";
+import { JobRowData } from "@/components/JobRow";
+import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
 import { DayCrewBar } from "@/components/DayCrewBar";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -130,7 +131,7 @@ async function DayView({
   await materializeRecurring(selected, selected);
 
   const dateStr = toDateInput(selected);
-  const [crews, availableCrews, jobs, settings] = await Promise.all([
+  const [crews, availableCrews, jobs, labour, settings] = await Promise.all([
     getCrewsForDay(selected),
     getCrewsAvailableToAdd(selected),
     prisma.scheduledJob.findMany({
@@ -138,19 +139,36 @@ async function DayView({
       include: { customer: { select: { id: true, name: true, address: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     }),
+    prisma.crewLabour.findMany({
+      where: { date: { gte: startOfDay(selected), lte: endOfDay(selected) } },
+      orderBy: { id: "asc" },
+    }),
     getSettings(),
   ]);
+  const currency = settings.currency;
 
   const doneCount = jobs.filter((j) => j.status === "DONE").length;
   const takings = jobs.filter((j) => j.status === "DONE").reduce((s, j) => s + j.price, 0);
-  const expected = jobs.reduce((s, j) => s + j.price, 0);
+  const wages = labour.reduce((s, l) => s + l.amount, 0);
+  const profit = takings - wages;
 
-  const groups: { id: number | null; name: string; colour: string; members: string }[] = [
+  const groups: GroupInfo[] = [
     ...crews,
     ...(jobs.some((j) => j.crewId == null)
       ? [{ id: null, name: "Unassigned", colour: "#97a08e", members: "" }]
       : []),
   ];
+
+  const boardJobs: BoardJob[] = jobs.map((j) => ({
+    ...(j as unknown as JobRowData),
+    crewId: j.crewId ?? null,
+  }));
+  const labourEntries: LabourEntry[] = labour.map((l) => ({
+    id: l.id,
+    crewId: l.crewId ?? null,
+    name: l.name,
+    amount: l.amount,
+  }));
 
   return (
     <div className="space-y-4">
@@ -162,71 +180,30 @@ async function DayView({
         defaultHourlyRate={settings.employeeRate}
       />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <TillTile label="Done" value={`${doneCount}/${jobs.length}`} />
-        <TillTile label="Takings" value={formatMoney(takings)} accent />
-        <TillTile label="If all done" value={formatMoney(expected)} muted />
+        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
+        <TillTile
+          label="Wages"
+          value={wages > 0 ? `−${formatMoney(wages, currency)}` : formatMoney(0, currency)}
+          negative={wages > 0}
+        />
+        <TillTile
+          label="Profit today"
+          value={formatMoney(profit, currency)}
+          accent={profit >= 0}
+          negative={profit < 0}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {groups.map((g) => {
-          const crewJobs = jobs.filter((j) => (j.crewId ?? null) === g.id);
-          const crewTakings = crewJobs
-            .filter((j) => j.status === "DONE")
-            .reduce((s, j) => s + j.price, 0);
-          const crewExpected = crewJobs.reduce((s, j) => s + j.price, 0);
-          return (
-            <div
-              key={String(g.id)}
-              className="card overflow-hidden border-l-4"
-              style={{ borderLeftColor: g.colour }}
-            >
-              <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
-                <div>
-                  <h2 className="font-display text-base font-bold text-brand-900">
-                    {g.name}
-                  </h2>
-                  {g.members && (
-                    <div className="text-xs text-stone-400">{g.members}</div>
-                  )}
-                </div>
-                <span className="badge bg-stone-100 text-stone-600">
-                  {crewJobs.length} {crewJobs.length === 1 ? "job" : "jobs"}
-                </span>
-              </div>
-
-              {crewJobs.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-stone-400">
-                  Nothing booked. Add a job above.
-                </p>
-              ) : (
-                <div className="divide-y divide-stone-100 px-4">
-                  {crewJobs.map((j, i) => (
-                    <JobRow
-                      key={j.id}
-                      job={j as unknown as JobRowData}
-                      isFirst={i === 0}
-                      isLast={i === crewJobs.length - 1}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between border-t border-dashed border-stone-200 bg-stone-50 px-4 py-2.5">
-                <span className="eyebrow">Takings</span>
-                <span className="ledger text-sm font-bold text-brand-900">
-                  {formatMoney(crewTakings)}
-                  {crewExpected > crewTakings && (
-                    <span className="ml-1.5 font-normal text-stone-400">
-                      / {formatMoney(crewExpected)}
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <DayBoard
+        date={dateStr}
+        groups={groups}
+        jobs={boardJobs}
+        labour={labourEntries}
+        currency={currency}
+        defaultRate={settings.employeeRate}
+      />
     </div>
   );
 }
@@ -314,18 +291,26 @@ function TillTile({
   value,
   accent,
   muted,
+  negative,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   muted?: boolean;
+  negative?: boolean;
 }) {
   return (
     <div className="stat-card">
       <div className="eyebrow">{label}</div>
       <div
         className={`ledger mt-1 text-lg sm:text-xl font-extrabold ${
-          accent ? "text-brand-700" : muted ? "text-stone-400" : "text-stone-900"
+          negative
+            ? "text-clay-600"
+            : accent
+              ? "text-brand-700"
+              : muted
+                ? "text-stone-400"
+                : "text-stone-900"
         }`}
       >
         {value}

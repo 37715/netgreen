@@ -13,6 +13,7 @@ export type CustomerDefaults = {
   recurrence?: "NONE" | "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
   recurrenceAnchor?: string;
   defaultPrice?: number | null;
+  typicalMinutes?: number | null;
   defaultCrewId?: number | null;
 };
 
@@ -103,6 +104,20 @@ export function CustomerForm({
           inputMode="decimal"
           defaultValue={defaults.defaultPrice ?? ""}
           placeholder="e.g. 30"
+          className="input"
+        />
+      </div>
+
+      <div>
+        <label className="label">Typical time on site (mins)</label>
+        <input
+          name="typicalMinutes"
+          type="number"
+          step="5"
+          min="0"
+          inputMode="numeric"
+          defaultValue={defaults.typicalMinutes ?? ""}
+          placeholder="e.g. 45"
           className="input"
         />
       </div>

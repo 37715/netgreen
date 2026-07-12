@@ -76,6 +76,9 @@ model Customer {
   recurrence       Recurrence     @default(NONE)
   recurrenceAnchor DateTime?
   defaultPrice     Float?
+  // Typical time on site in minutes; with defaultPrice this gives the round's
+  // effective hourly rate so underpriced rounds stand out.
+  typicalMinutes   Int?
   defaultCrew      Crew?          @relation(fields: [defaultCrewId], references: [id])
   defaultCrewId    Int?
   active           Boolean        @default(true)

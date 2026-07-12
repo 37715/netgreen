@@ -55,6 +55,7 @@ export default async function CustomerEditPage({
               ? toDateInput(customer.recurrenceAnchor)
               : undefined,
             defaultPrice: customer.defaultPrice,
+            typicalMinutes: customer.typicalMinutes,
             defaultCrewId: customer.defaultCrewId,
           }}
         />

@@ -21,6 +21,10 @@ function readCustomer(formData: FormData) {
     recurrenceAnchor:
       recurrence !== "NONE" && anchorStr ? fromDateInput(anchorStr) : null,
     defaultPrice: priceStr ? parseAmount(priceStr) : null,
+    typicalMinutes: (() => {
+      const m = Math.round(parseAmount(String(formData.get("typicalMinutes") || "")));
+      return m > 0 ? m : null;
+    })(),
     defaultCrewId: crewIdRaw ? Number(crewIdRaw) : null,
   };
 }

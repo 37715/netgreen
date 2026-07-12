@@ -211,6 +211,62 @@ export async function setJobStatus(formData: FormData) {
   revalidatePath("/");
 }
 
+/**
+ * Rain-day bump: move every not-yet-done job on a day to another date.
+ * Recurring occurrences leave an exception behind so the original day
+ * isn't refilled on the next calendar load.
+ */
+export async function bumpDay(formData: FormData) {
+  const from = fromDateInput(String(formData.get("from") || ""));
+  const to = fromDateInput(String(formData.get("to") || ""));
+  if (toStoredDay(from).getTime() === toStoredDay(to).getTime()) return;
+
+  const jobs = await prisma.scheduledJob.findMany({
+    where: {
+      date: { gte: startOfDay(from), lte: endOfDay(from) },
+      status: "SCHEDULED",
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (jobs.length === 0) return;
+
+  const base = await prisma.scheduledJob.findFirst({
+    where: { date: { gte: startOfDay(to), lte: endOfDay(to) } },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  let order = (base?.sortOrder ?? -1) + 1;
+
+  await prisma.$transaction([
+    ...jobs.map((j) =>
+      prisma.scheduledJob.update({
+        where: { id: j.id },
+        data: { date: toStoredDay(to), sortOrder: order++ },
+      })
+    ),
+    ...jobs
+      .filter((j) => j.recurringSourceCustomerId)
+      .map((j) =>
+        prisma.scheduleException.upsert({
+          where: {
+            customerId_date: {
+              customerId: j.recurringSourceCustomerId!,
+              date: toStoredDay(from),
+            },
+          },
+          update: {},
+          create: {
+            customerId: j.recurringSourceCustomerId!,
+            date: toStoredDay(from),
+          },
+        })
+      ),
+  ]);
+
+  revalidatePath("/calendar");
+  revalidatePath("/");
+}
+
 export async function setJobPayment(formData: FormData) {
   const id = Number(formData.get("id"));
   const method = String(formData.get("method")); // "CASH" | "BANK" | "UNPAID"

@@ -17,6 +17,7 @@ import { JobRowData } from "@/components/JobRow";
 import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
 import { DayCrewBar } from "@/components/DayCrewBar";
+import { RainBump } from "@/components/RainBump";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { getCrewsForDay, getCrewsAvailableToAdd } from "@/lib/day-crews";
 import { getSettings } from "@/lib/settings";
@@ -203,6 +204,12 @@ async function DayView({
         labour={labourEntries}
         currency={currency}
         defaultRate={settings.employeeRate}
+      />
+
+      <RainBump
+        date={dateStr}
+        nextDate={toDateInput(addDays(selected, 1))}
+        remaining={jobs.filter((j) => j.status === "SCHEDULED").length}
       />
     </div>
   );

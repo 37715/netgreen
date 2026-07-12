@@ -5,6 +5,7 @@ import { PageHeader, EmptyState } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
 import { CustomerForm } from "@/components/CustomerForm";
 import { createCustomer } from "@/app/actions/customers";
+import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const recurrenceLabel: Record<string, string> = {
 };
 
 export default async function CustomersPage() {
-  const [customers, crews] = await Promise.all([
+  const [customers, crews, settings] = await Promise.all([
     prisma.customer.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
       include: { defaultCrew: { select: { name: true } } },
@@ -26,13 +27,16 @@ export default async function CustomersPage() {
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
+    getSettings(),
   ]);
+  // A round earning less per hour than you'd pay an employee is a red flag.
+  const rateFloor = settings.employeeRate;
 
   return (
     <div>
       <PageHeader
         title="Customers"
-        subtitle="Set a repeat schedule and they auto-fill onto the calendar."
+        subtitle="Set a repeat schedule and they auto-fill onto the calendar. Add a typical time on site to see each round's £/hr — red means it earns less than you'd pay an employee."
       />
 
       <div className="mb-4">
@@ -68,6 +72,22 @@ export default async function CustomersPage() {
                     {recurrenceLabel[c.recurrence]}
                   </span>
                 )}
+                {c.defaultPrice != null && c.typicalMinutes ? (
+                  (() => {
+                    const rate = (c.defaultPrice / c.typicalMinutes) * 60;
+                    const tone =
+                      rate < rateFloor
+                        ? "bg-clay-100 text-clay-600"
+                        : rate >= rateFloor * 1.5
+                          ? "bg-lime-100 text-lime-600"
+                          : "bg-stone-100 text-stone-600";
+                    return (
+                      <span className={`badge ${tone} tabular-nums`}>
+                        £{rate.toFixed(0)}/hr
+                      </span>
+                    );
+                  })()
+                ) : null}
                 {c.defaultPrice != null && (
                   <span className="text-sm font-semibold text-stone-700 tabular-nums">
                     {formatMoney(c.defaultPrice)}

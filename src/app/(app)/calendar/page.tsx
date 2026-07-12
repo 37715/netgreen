@@ -217,6 +217,7 @@ async function DayView({
           value={formatMoney(profit, currency)}
           accent={profit >= 0}
           negative={profit < 0}
+          sum
         />
       </div>
 
@@ -322,28 +323,32 @@ function TillTile({
   accent,
   muted,
   negative,
+  sum,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   muted?: boolean;
   negative?: boolean;
+  sum?: boolean;
 }) {
   return (
     <div className="stat-card">
       <div className="eyebrow">{label}</div>
-      <div
-        className={`ledger mt-1 text-lg sm:text-xl font-extrabold ${
-          negative
-            ? "text-clay-600"
-            : accent
-              ? "text-brand-700"
-              : muted
-                ? "text-stone-400"
-                : "text-stone-900"
-        }`}
-      >
-        {value}
+      <div className="mt-1">
+        <span
+          className={`ledger text-lg sm:text-xl font-extrabold ${sum ? "sum" : ""} ${
+            negative
+              ? "text-clay-600"
+              : accent
+                ? "text-brand-700"
+                : muted
+                  ? "text-stone-400"
+                  : "text-stone-900"
+          }`}
+        >
+          {value}
+        </span>
       </div>
     </div>
   );

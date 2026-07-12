@@ -66,7 +66,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
               }`}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 h-5 w-1 -transtone-y-1/2 rounded-r-full bg-lime-500" />
+                <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-lime-500" />
               )}
               <Icon className="h-5 w-5" />
               {label}

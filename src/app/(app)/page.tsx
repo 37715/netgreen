@@ -135,12 +135,14 @@ export default async function DashboardPage({
           <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-200">
             Profit · {label}
           </div>
-          <div
-            className={`ledger font-display mt-1 text-5xl sm:text-6xl font-extrabold leading-none ${
-              profitPositive ? "text-lime-400" : "text-clay-500"
-            }`}
-          >
-            {formatMoney(summary.profit, currency)}
+          <div className="mt-1">
+            <span
+              className={`ledger font-display sum text-5xl sm:text-6xl font-extrabold leading-none ${
+                profitPositive ? "text-lime-400" : "text-clay-500"
+              }`}
+            >
+              {formatMoney(summary.profit, currency)}
+            </span>
           </div>
           <p className="mt-3 max-w-xl text-sm text-brand-100">
             You brought in{" "}
@@ -217,7 +219,7 @@ export default async function DashboardPage({
           </div>
         </div>
         <span
-          className={`ledger text-2xl font-extrabold ${
+          className={`ledger sum text-2xl font-extrabold ${
             profitPositive ? "text-brand-700" : "text-clay-600"
           }`}
         >
@@ -377,7 +379,7 @@ function Total({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between border-t border-stone-100 pt-2.5">
       <dt className="font-display font-bold text-stone-900">{label}</dt>
-      <dd className="ledger font-bold text-stone-900">{value}</dd>
+      <dd className="ledger sum font-bold text-stone-900">{value}</dd>
     </div>
   );
 }

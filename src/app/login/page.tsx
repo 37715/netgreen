@@ -28,15 +28,25 @@ export default async function LoginPage({
   const denied = sp.error === "AccessDenied";
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-stone-50 px-4">
-      <div className="card w-full max-w-sm p-8 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-lime-400">
-          <LeafIcon className="h-8 w-8" />
+    <div className="flex min-h-full flex-col items-center justify-center px-4">
+      <div className="card w-full max-w-sm overflow-hidden text-center">
+        <div className="relative bg-brand-800 px-8 pb-6 pt-8">
+          <div
+            className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(124,181,24,0.35), transparent 70%)" }}
+          />
+          <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-lime-400 shadow-[inset_0_-2px_0_rgba(0,0,0,0.2)]">
+            <LeafIcon className="h-8 w-8" />
+          </div>
+          <h1 className="relative mt-4 font-display text-2xl font-extrabold text-white">
+            netgreen<span className="text-lime-400">.</span>
+          </h1>
+          <p className="relative mt-1 text-xs text-brand-200">
+            The job book, the money book, the whole business.
+          </p>
         </div>
-        <h1 className="mt-5 font-display text-2xl font-extrabold text-brand-900">
-          netgreen<span className="text-lime-600">.</span>
-        </h1>
-        <p className="mt-2 text-sm text-stone-500">
+        <div className="p-8 pt-5">
+        <p className="text-sm text-stone-500">
           Approved team only — one shared account for the business.
         </p>
 
@@ -65,6 +75,7 @@ export default async function LoginPage({
             </form>
           </>
         )}
+        </div>
       </div>
     </div>
   );

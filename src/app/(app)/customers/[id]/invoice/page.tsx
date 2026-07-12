@@ -118,7 +118,7 @@ export default async function InvoicePage({
 
             <div className="mt-4 flex items-center justify-end gap-6">
               <span className="font-display font-bold text-stone-800">Total due</span>
-              <span className="ledger text-2xl font-extrabold text-brand-800">
+              <span className="ledger sum text-2xl font-extrabold text-brand-800">
                 {formatMoney(total, settings.currency)}
               </span>
             </div>

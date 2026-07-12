@@ -43,7 +43,7 @@
 }
 
 :root {
-  --background: #eceee8;
+  --background: #eef0e7;
   --foreground: #161a14;
 }
 
@@ -52,10 +52,25 @@ html {
   color: var(--foreground);
 }
 
+/* The page reads like a well-kept job book: warm paper with faint rulings. */
 body {
-  background: var(--background);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 35px,
+      rgba(11, 50, 32, 0.045) 35px,
+      rgba(11, 50, 32, 0.045) 36px
+    ),
+    var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+}
+
+@media print {
+  body {
+    background: white;
+  }
 }
 
 ::selection {
@@ -115,24 +130,30 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(22,26,20,0.04)];
+    @apply rounded-2xl border border-stone-200 bg-white shadow-[0_1px_3px_rgba(22,26,20,0.05),0_8px_24px_-16px_rgba(11,50,32,0.12)];
   }
 
   .stat-card {
-    @apply rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-[0_1px_2px_rgba(22,26,20,0.04)];
+    @apply rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(22,26,20,0.05),0_8px_24px_-16px_rgba(11,50,32,0.12)];
+  }
+
+  /* Signature: final sums get the hand-ledger double rule, in the figure's own ink. */
+  .sum {
+    border-bottom: 4px double currentColor;
+    padding-bottom: 1px;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-brand-700 text-white hover:bg-brand-800;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-brand-700 text-white hover:bg-brand-800 active:translate-y-px shadow-[inset_0_-2px_0_rgba(0,0,0,0.18)];
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-stone-300 bg-white text-stone-700 hover:bg-stone-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 active:translate-y-px;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-stone-600 hover:bg-stone-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-stone-600 hover:bg-stone-100 active:translate-y-px;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-clay-100 bg-white text-clay-600 hover:bg-clay-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-clay-100 bg-white text-clay-600 hover:bg-clay-100 active:translate-y-px;
   }
 
   .input {

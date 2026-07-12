@@ -89,6 +89,10 @@ model ScheduledJob {
   hourlyRate  Float?
   hours       Float?
   workers     Int?
+  // Optional waste-removal add-on. Total waste charge = wasteBags × wasteBagPrice,
+  // included in `price`.
+  wasteBags     Int?
+  wasteBagPrice Float?
   status      JobStatus @default(SCHEDULED)
   sortOrder   Int       @default(0)
   notes       String    @default("")

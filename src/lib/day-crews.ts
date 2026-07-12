@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { startOfDay } from "@/lib/dates";
+import { startOfDay, endOfDay, toStoredDay } from "@/lib/dates";
 
 export type DayCrewInfo = {
   id: number;
@@ -10,7 +10,7 @@ export type DayCrewInfo = {
 
 /** Crews scheduled to work on this calendar day. */
 export async function getCrewsForDay(date: Date): Promise<DayCrewInfo[]> {
-  const day = startOfDay(date);
+  const day = toStoredDay(date);
   const rows = await prisma.dayCrew.findMany({
     where: { date: day },
     include: { crew: true },
@@ -50,7 +50,7 @@ export async function getCrewsAvailableToAdd(date: Date): Promise<DayCrewInfo[]>
 
 /** True once this day has been customised (add/remove crew). */
 export async function hasExplicitDayCrew(date: Date): Promise<boolean> {
-  return (await prisma.dayCrew.count({ where: { date: startOfDay(date) } })) > 0;
+  return (await prisma.dayCrew.count({ where: { date: toStoredDay(date) } })) > 0;
 }
 
 /**
@@ -58,7 +58,7 @@ export async function hasExplicitDayCrew(date: Date): Promise<boolean> {
  * the first add/remove on a day that hasn't been customised yet.
  */
 export async function ensureDayCrewSnapshot(date: Date): Promise<void> {
-  const day = startOfDay(date);
+  const day = toStoredDay(date);
   if ((await prisma.dayCrew.count({ where: { date: day } })) > 0) return;
 
   const crews = await prisma.crew.findMany({
@@ -74,7 +74,7 @@ export async function ensureDayCrewSnapshot(date: Date): Promise<void> {
 
 async function nextDayCrewOrder(date: Date): Promise<number> {
   const last = await prisma.dayCrew.findFirst({
-    where: { date: startOfDay(date) },
+    where: { date: toStoredDay(date) },
     orderBy: { sortOrder: "desc" },
     select: { sortOrder: true },
   });
@@ -82,7 +82,7 @@ async function nextDayCrewOrder(date: Date): Promise<number> {
 }
 
 export async function addCrewToDayRecord(date: Date, crewId: number): Promise<void> {
-  const day = startOfDay(date);
+  const day = toStoredDay(date);
   const hasExplicit = await hasExplicitDayCrew(day);
 
   if (!hasExplicit) {
@@ -105,7 +105,7 @@ export async function addCrewToDayRecord(date: Date, crewId: number): Promise<vo
 }
 
 export async function removeCrewFromDayRecord(date: Date, crewId: number): Promise<void> {
-  const day = startOfDay(date);
+  const day = toStoredDay(date);
   await ensureDayCrewSnapshot(day);
 
   await prisma.dayCrew.deleteMany({
@@ -114,7 +114,10 @@ export async function removeCrewFromDayRecord(date: Date, crewId: number): Promi
 
   // Jobs on this crew today become unassigned.
   await prisma.scheduledJob.updateMany({
-    where: { date: day, crewId },
+    where: {
+      date: { gte: startOfDay(day), lte: endOfDay(day) },
+      crewId,
+    },
     data: { crewId: null },
   });
 }

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { parseAmount } from "@/lib/money";
-import { fromDateInput, startOfDay } from "@/lib/dates";
+import { fromDateInput, startOfDay, toStoredDay } from "@/lib/dates";
 import { OverheadCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -13,7 +13,7 @@ export async function createOverhead(formData: FormData) {
       category: (String(formData.get("category") || "OTHER") as OverheadCategory),
       description: String(formData.get("description") || ""),
       amount: parseAmount(formData.get("amount")),
-      date: dateStr ? fromDateInput(dateStr) : startOfDay(new Date()),
+      date: dateStr ? toStoredDay(fromDateInput(dateStr)) : toStoredDay(new Date()),
     },
   });
   revalidatePath("/overheads");

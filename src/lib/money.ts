@@ -47,6 +47,13 @@ export function computeHourlyPrice(
   return Math.round(w * r * h * 100) / 100;
 }
 
+/** Total for a waste-removal add-on: bags × price per bag. */
+export function computeWasteTotal(bags: number, pricePerBag: number): number {
+  const b = Math.max(0, bags);
+  const p = Math.max(0, pricePerBag);
+  return Math.round(b * p * 100) / 100;
+}
+
 export function formatHourlyBreakdown(
   workers: number,
   hourlyRate: number,

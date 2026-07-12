@@ -4,6 +4,7 @@ import { startOfDay, endOfDay } from "@/lib/dates";
 
 export type RangeSummary = {
   quickIncome: number;
+  wasteIncome: number;
   projectIncome: number;
   revenue: number;
   overheadCosts: number;
@@ -26,7 +27,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const [doneJobs, payments, overheads, projectCosts] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { status: "DONE", date: { gte, lte } },
-      select: { price: true },
+      select: { price: true, wasteBags: true, wasteBagPrice: true },
     }),
     prisma.payment.findMany({
       where: { date: { gte, lte } },
@@ -43,6 +44,11 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   ]);
 
   const quickIncome = sum(doneJobs.map((j) => j.price));
+  // Waste removal is billed inside each job's price; track it as a subset so we can
+  // see how much of the quick-job income comes from waste, without double-counting.
+  const wasteIncome = sum(
+    doneJobs.map((j) => (j.wasteBags ?? 0) * (j.wasteBagPrice ?? 0))
+  );
   const projectIncome = sum(payments.map((p) => p.amount));
   const overheadCosts = sum(overheads.map((o) => o.amount));
   const projectCostsTotal = sum(projectCosts.map((c) => c.amount));
@@ -52,6 +58,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
 
   return {
     quickIncome,
+    wasteIncome,
     projectIncome,
     revenue,
     overheadCosts,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createJobFromCalendar } from "@/app/actions/jobs";
-import { computeHourlyPrice, formatMoney } from "@/lib/money";
+import { computeHourlyPrice, computeWasteTotal, formatMoney } from "@/lib/money";
 import { PlusIcon } from "@/components/icons";
 
 type Crew = { id: number; name: string; colour: string };
@@ -43,6 +43,9 @@ export function JobComposer({
   const [workers, setWorkers] = useState(1);
   const [hourlyRate, setHourlyRate] = useState(String(defaultHourlyRate));
   const [hours, setHours] = useState("");
+  const [wasteOn, setWasteOn] = useState(false);
+  const [wasteBags, setWasteBags] = useState("");
+  const [wasteBagPrice, setWasteBagPrice] = useState("");
   const [crewId, setCrewId] = useState<string>(crews[0] ? String(crews[0].id) : "");
   const [repeat, setRepeat] = useState("NONE");
 
@@ -59,6 +62,14 @@ export function JobComposer({
     return computeHourlyPrice(w, r, h);
   }, [workers, hourlyRate, hours]);
 
+  const wasteTotal = useMemo(() => {
+    if (!wasteOn) return 0;
+    return computeWasteTotal(parseFloat(wasteBags) || 0, parseFloat(wasteBagPrice) || 0);
+  }, [wasteOn, wasteBags, wasteBagPrice]);
+
+  const basePrice = pricingMode === "HOURLY" ? hourlyTotal : parseFloat(price) || 0;
+  const grandTotal = basePrice + wasteTotal;
+
   function resetForm() {
     setCustomerName("");
     setCustomerAddress("");
@@ -67,6 +78,9 @@ export function JobComposer({
     setWorkers(1);
     setHourlyRate(String(defaultHourlyRate));
     setHours("");
+    setWasteOn(false);
+    setWasteBags("");
+    setWasteBagPrice("");
     setRepeat("NONE");
     setPricingMode("FIXED");
   }
@@ -240,17 +254,80 @@ export function JobComposer({
           </div>
         )}
 
-        {pricingMode === "HOURLY" && (
-          <div className="mt-3 flex items-baseline gap-2 rounded-xl bg-stone-50 px-3 py-2.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-              Total
-            </span>
-            <span className="ledger text-lg font-extrabold text-brand-800">
-              {formatMoney(hourlyTotal)}
-            </span>
-            <span className="text-xs text-stone-400">
-              {workers} × £{hourlyRate || "0"} × {hours || "0"}h
-            </span>
+        <div className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="label mb-0">Waste removal</span>
+            <button
+              type="button"
+              onClick={() => setWasteOn((v) => !v)}
+              className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors ${
+                wasteOn
+                  ? "border-lime-500 bg-lime-100 text-lime-600"
+                  : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+              }`}
+            >
+              {wasteOn ? "Added" : "Add waste removal"}
+            </button>
+          </div>
+
+          {wasteOn && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 max-w-[420px]">
+              <div>
+                <label className="label">Bags</label>
+                <input
+                  name="wasteBags"
+                  type="number"
+                  step="1"
+                  min="0"
+                  inputMode="numeric"
+                  value={wasteBags}
+                  onChange={(e) => setWasteBags(e.target.value)}
+                  placeholder="e.g. 3"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">£ per bag</label>
+                <input
+                  name="wasteBagPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  value={wasteBagPrice}
+                  onChange={(e) => setWasteBagPrice(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="input"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {(pricingMode === "HOURLY" || wasteTotal > 0) && (
+          <div className="mt-3 rounded-xl bg-stone-50 px-3 py-2.5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Total
+              </span>
+              <span className="ledger text-lg font-extrabold text-brand-800">
+                {formatMoney(grandTotal)}
+              </span>
+            </div>
+            {wasteTotal > 0 && (
+              <p className="mt-1 text-xs text-stone-400">
+                {pricingMode === "HOURLY"
+                  ? `${workers} × £${hourlyRate || "0"} × ${hours || "0"}h`
+                  : `${formatMoney(basePrice)} job`}
+                {" + "}
+                {wasteBags || "0"} bags × £{wasteBagPrice || "0"} waste
+              </p>
+            )}
+            {wasteTotal <= 0 && pricingMode === "HOURLY" && (
+              <p className="mt-1 text-xs text-stone-400">
+                {workers} × £{hourlyRate || "0"} × {hours || "0"}h
+              </p>
+            )}
           </div>
         )}
       </div>

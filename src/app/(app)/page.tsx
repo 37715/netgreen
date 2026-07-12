@@ -132,6 +132,12 @@ export default async function DashboardPage({
           <h2 className="font-display text-base font-bold text-brand-900">Money in</h2>
           <dl className="mt-3 space-y-2.5 text-sm">
             <Row label="Maintenance & quick jobs" value={formatMoney(summary.quickIncome, currency)} />
+            {summary.wasteIncome > 0 && (
+              <SubRow
+                label="incl. waste removal"
+                value={formatMoney(summary.wasteIncome, currency)}
+              />
+            )}
             <Row label="Project payments" value={formatMoney(summary.projectIncome, currency)} />
             <Total label="Revenue" value={formatMoney(summary.revenue, currency)} />
           </dl>
@@ -242,6 +248,15 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between">
       <dt className="text-stone-600">{label}</dt>
       <dd className="ledger text-stone-700">{value}</dd>
+    </div>
+  );
+}
+
+function SubRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between pl-4 text-xs">
+      <dt className="text-stone-400">{label}</dt>
+      <dd className="ledger text-stone-400">{value}</dd>
     </div>
   );
 }

@@ -1,14 +1,17 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { parseAmount, computeHourlyPrice } from "@/lib/money";
-import { fromDateInput, startOfDay } from "@/lib/dates";
+import { parseAmount, computeHourlyPrice, computeWasteTotal } from "@/lib/money";
+import { fromDateInput, startOfDay, endOfDay, toStoredDay } from "@/lib/dates";
 import { PricingType, Recurrence } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 async function nextSortOrder(date: Date, crewId: number | null): Promise<number> {
   const last = await prisma.scheduledJob.findFirst({
-    where: { date: startOfDay(date), crewId: crewId ?? undefined },
+    where: {
+      date: { gte: startOfDay(date), lte: endOfDay(date) },
+      crewId: crewId ?? undefined,
+    },
     orderBy: { sortOrder: "desc" },
     select: { sortOrder: true },
   });
@@ -17,34 +20,51 @@ async function nextSortOrder(date: Date, crewId: number | null): Promise<number>
 
 function readJobPrice(formData: FormData): {
   price: number;
+  basePrice: number;
   pricingType: PricingType;
   hourlyRate: number | null;
   hours: number | null;
   workers: number | null;
+  wasteBags: number | null;
+  wasteBagPrice: number | null;
 } {
   const pricingType = (
     String(formData.get("pricingType") || "FIXED") === "HOURLY" ? "HOURLY" : "FIXED"
   ) as PricingType;
 
+  // Optional waste-removal add-on, layered on top of either pricing mode.
+  const wasteBags = Math.max(0, Math.round(parseAmount(formData.get("wasteBags"))));
+  const wasteBagPrice = parseAmount(formData.get("wasteBagPrice"));
+  const hasWaste = wasteBags > 0 && wasteBagPrice > 0;
+  const wasteTotal = hasWaste ? computeWasteTotal(wasteBags, wasteBagPrice) : 0;
+
   if (pricingType === "HOURLY") {
     const workers = Math.max(1, Math.round(parseAmount(formData.get("workers")) || 1));
     const hourlyRate = parseAmount(formData.get("hourlyRate"));
     const hours = parseAmount(formData.get("hours"));
+    const basePrice = computeHourlyPrice(workers, hourlyRate, hours);
     return {
-      price: computeHourlyPrice(workers, hourlyRate, hours),
+      price: basePrice + wasteTotal,
+      basePrice,
       pricingType,
       hourlyRate,
       hours,
       workers,
+      wasteBags: hasWaste ? wasteBags : null,
+      wasteBagPrice: hasWaste ? wasteBagPrice : null,
     };
   }
 
+  const basePrice = parseAmount(formData.get("price"));
   return {
-    price: parseAmount(formData.get("price")),
+    price: basePrice + wasteTotal,
+    basePrice,
     pricingType: "FIXED",
     hourlyRate: null,
     hours: null,
     workers: null,
+    wasteBags: hasWaste ? wasteBags : null,
+    wasteBagPrice: hasWaste ? wasteBagPrice : null,
   };
 }
 
@@ -63,7 +83,9 @@ export async function createJobFromCalendar(formData: FormData) {
   const what = String(formData.get("title") || "").trim();
   const repeat = String(formData.get("repeat") || "NONE") as Recurrence;
   const pricing = readJobPrice(formData);
-  const { price } = pricing;
+  // Seed recurring-round defaults from the base price only — the waste add-on is a
+  // one-off, per-visit extra and shouldn't stick to the customer's usual price.
+  const { basePrice: price } = pricing;
 
   let customerId: number | null = null;
   if (customerName) {
@@ -78,7 +100,7 @@ export async function createJobFromCalendar(formData: FormData) {
           defaultPrice: price || null,
           defaultCrewId: crewId,
           recurrence: repeat,
-          recurrenceAnchor: repeat !== "NONE" ? startOfDay(date) : null,
+          recurrenceAnchor: repeat !== "NONE" ? toStoredDay(date) : null,
         },
       });
     } else {
@@ -94,7 +116,7 @@ export async function createJobFromCalendar(formData: FormData) {
 
       if (repeat !== "NONE" && customer.recurrence === "NONE") {
         updates.recurrence = repeat;
-        updates.recurrenceAnchor = startOfDay(date);
+        updates.recurrenceAnchor = toStoredDay(date);
         updates.defaultPrice = customer.defaultPrice ?? (price || null);
         updates.defaultCrewId = customer.defaultCrewId ?? crewId;
       }
@@ -113,7 +135,7 @@ export async function createJobFromCalendar(formData: FormData) {
       await prisma.scheduleException
         .delete({
           where: {
-            customerId_date: { customerId, date: startOfDay(date) },
+            customerId_date: { customerId, date: toStoredDay(date) },
           },
         })
         .catch(() => {});
@@ -124,13 +146,15 @@ export async function createJobFromCalendar(formData: FormData) {
 
   await prisma.scheduledJob.create({
     data: {
-      date: startOfDay(date),
+      date: toStoredDay(date),
       title,
       price: pricing.price,
       pricingType: pricing.pricingType,
       hourlyRate: pricing.hourlyRate,
       hours: pricing.hours,
       workers: pricing.workers,
+      wasteBags: pricing.wasteBags,
+      wasteBagPrice: pricing.wasteBagPrice,
       crewId: crewId || undefined,
       customerId: customerId || undefined,
       recurringSourceCustomerId:
@@ -155,7 +179,7 @@ export async function createQuickJob(formData: FormData) {
 
   await prisma.scheduledJob.create({
     data: {
-      date: startOfDay(date),
+      date: toStoredDay(date),
       title,
       price: parseAmount(formData.get("price")),
       crewId: crewId || undefined,
@@ -213,13 +237,13 @@ export async function deleteJob(formData: FormData) {
       where: {
         customerId_date: {
           customerId: job.recurringSourceCustomerId,
-          date: startOfDay(job.date),
+          date: toStoredDay(job.date),
         },
       },
       update: {},
       create: {
         customerId: job.recurringSourceCustomerId,
-        date: startOfDay(job.date),
+        date: toStoredDay(job.date),
       },
     });
   }
@@ -236,7 +260,10 @@ export async function moveJob(formData: FormData) {
   if (!job) return;
 
   const siblings = await prisma.scheduledJob.findMany({
-    where: { date: startOfDay(job.date), crewId: job.crewId ?? undefined },
+    where: {
+      date: { gte: startOfDay(job.date), lte: endOfDay(job.date) },
+      crewId: job.crewId ?? undefined,
+    },
     orderBy: { sortOrder: "asc" },
   });
   const idx = siblings.findIndex((s) => s.id === id);

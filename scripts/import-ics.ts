@@ -15,6 +15,7 @@
  */
 import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
+import { calendarDayKey, toStoredDay } from "../src/lib/dates";
 
 const prisma = new PrismaClient();
 
@@ -431,7 +432,7 @@ async function main() {
   for (const dk of dayKeys) {
     const list = byDay.get(dk)!.sort((a, b) => a.start.getTime() - b.start.getTime());
     const day = list[0].day;
-    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const dayStart = toStoredDay(day);
 
     let base = 0;
     if (!DRY) {

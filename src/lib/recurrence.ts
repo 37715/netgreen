@@ -1,6 +1,19 @@
 import { prisma } from "@/lib/db";
 import { Recurrence } from "@prisma/client";
-import { addDays, isSameDay, startOfDay } from "@/lib/dates";
+import {
+  addDays,
+  isSameDay,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  toStoredDay,
+  calendarDayKey,
+} from "@/lib/dates";
+
+function partsFromKey(key: string): { y: number; m: number; d: number } {
+  const [y, m, d] = key.split("-").map(Number);
+  return { y, m: m || 1, d: d || 1 };
+}
 
 /** All occurrence dates for a recurring customer within [from, to] inclusive. */
 export function occurrencesInRange(
@@ -33,21 +46,21 @@ export function occurrencesInRange(
   }
 
   if (recurrence === "MONTHLY") {
-    const dom = a.getDate();
-    let year = start.getFullYear();
-    let month = start.getMonth();
-    // Step month-by-month from the start month until past `end`.
-    while (true) {
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dom = partsFromKey(calendarDayKey(a)).d;
+    let cursor = startOfMonth(start);
+    const endKey = calendarDayKey(end);
+    while (calendarDayKey(cursor) <= endKey) {
+      const { y, m } = partsFromKey(calendarDayKey(cursor));
+      const daysInMonth = new Date(Date.UTC(y, m, 0, 12, 0, 0, 0)).getUTCDate();
       const day = Math.min(dom, daysInMonth);
-      const occ = new Date(year, month, day);
-      if (occ > end) break;
-      if (occ >= start && occ >= a) out.push(occ);
-      month += 1;
-      if (month > 11) {
-        month = 0;
-        year += 1;
+      const occ = new Date(Date.UTC(y, m - 1, day, 12, 0, 0, 0));
+      if (
+        calendarDayKey(occ) >= calendarDayKey(start) &&
+        calendarDayKey(occ) >= calendarDayKey(a)
+      ) {
+        out.push(occ);
       }
+      cursor = new Date(Date.UTC(y, m, 1, 12, 0, 0, 0));
     }
     return out;
   }
@@ -75,14 +88,14 @@ export async function materializeRecurring(from: Date, to: Date): Promise<number
     prisma.scheduledJob.findMany({
       where: {
         recurringSourceCustomerId: { in: customerIds },
-        date: { gte: startOfDay(from), lte: startOfDay(to) },
+        date: { gte: startOfDay(from), lte: endOfDay(to) },
       },
       select: { recurringSourceCustomerId: true, date: true },
     }),
     prisma.scheduleException.findMany({
       where: {
         customerId: { in: customerIds },
-        date: { gte: startOfDay(from), lte: startOfDay(to) },
+        date: { gte: startOfDay(from), lte: endOfDay(to) },
       },
       select: { customerId: true, date: true },
     }),
@@ -90,12 +103,12 @@ export async function materializeRecurring(from: Date, to: Date): Promise<number
 
   const seen = new Set(
     existing.map(
-      (e) => `${e.recurringSourceCustomerId}:${startOfDay(e.date).getTime()}`
+      (e) => `${e.recurringSourceCustomerId}:${calendarDayKey(e.date)}`
     )
   );
   // Treat deleted occurrences as already handled so they are not recreated.
   for (const ex of exceptions) {
-    seen.add(`${ex.customerId}:${startOfDay(ex.date).getTime()}`);
+    seen.add(`${ex.customerId}:${calendarDayKey(ex.date)}`);
   }
 
   const toCreate: {
@@ -115,11 +128,11 @@ export async function materializeRecurring(from: Date, to: Date): Promise<number
       to
     );
     for (const d of dates) {
-      const key = `${c.id}:${startOfDay(d).getTime()}`;
+      const key = `${c.id}:${calendarDayKey(d)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       toCreate.push({
-        date: startOfDay(d),
+        date: toStoredDay(d),
         title: c.name,
         price: c.defaultPrice ?? 0,
         customerId: c.id,

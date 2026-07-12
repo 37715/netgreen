@@ -284,6 +284,28 @@ export async function setJobPayment(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function updateJobNotes(formData: FormData) {
+  const id = Number(formData.get("id"));
+  await prisma.scheduledJob.update({
+    where: { id },
+    data: { notes: String(formData.get("notes") || "") },
+  });
+  revalidatePath("/calendar");
+}
+
+/** Mark every unpaid done job for a customer as paid (from the invoice page). */
+export async function markCustomerJobsPaid(formData: FormData) {
+  const customerId = Number(formData.get("customerId"));
+  const method = String(formData.get("method")) === "CASH" ? "CASH" : "BANK";
+  await prisma.scheduledJob.updateMany({
+    where: { customerId, status: "DONE", paidAt: null },
+    data: { paidAt: new Date(), paymentMethod: method },
+  });
+  revalidatePath("/");
+  revalidatePath("/calendar");
+  revalidatePath(`/customers/${customerId}/invoice`);
+}
+
 export async function updateJobPrice(formData: FormData) {
   const id = Number(formData.get("id"));
   await prisma.scheduledJob.update({

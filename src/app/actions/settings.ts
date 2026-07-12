@@ -8,10 +8,14 @@ export async function updateSettings(formData: FormData) {
   const businessName =
     String(formData.get("businessName") || "").trim() || "netgreen";
   const employeeRate = parseAmount(formData.get("employeeRate"));
+  const taxPotPercent = Math.min(
+    100,
+    Math.max(0, parseAmount(formData.get("taxPotPercent")))
+  );
   await prisma.settings.upsert({
     where: { id: 1 },
-    update: { businessName, employeeRate },
-    create: { id: 1, businessName, employeeRate },
+    update: { businessName, employeeRate, taxPotPercent },
+    create: { id: 1, businessName, employeeRate, taxPotPercent },
   });
   revalidatePath("/", "layout");
 }

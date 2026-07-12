@@ -72,10 +72,11 @@ export function EmptyState({
 }
 
 const projectStatusStyles: Record<string, string> = {
-  QUOTE: "bg-stone-100 text-stone-600",
+  QUOTE: "bg-amber-100 text-amber-700",
   ACTIVE: "bg-brand-100 text-brand-700",
   DONE: "bg-lime-100 text-lime-600",
   PAID: "bg-stone-200 text-stone-700",
+  LOST: "bg-stone-100 text-stone-400",
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -4,7 +4,7 @@ import { formatDayLabel, startOfMonth, endOfMonth, toDateInput } from "@/lib/dat
 import { PageHeader, StatCard, EmptyState } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
 import { TrashIcon } from "@/components/icons";
-import { createOverhead, deleteOverhead } from "@/app/actions/overheads";
+import { createOverhead, deleteOverhead, logMileage } from "@/app/actions/overheads";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ const categoryLabel: Record<string, string> = {
   INSURANCE: "Insurance",
   VAN: "Van",
   SOFTWARE: "Software / subs",
+  MILEAGE: "Mileage",
   OTHER: "Other",
 };
 
@@ -23,6 +24,7 @@ const categoryColour: Record<string, string> = {
   INSURANCE: "bg-blue-100 text-blue-700",
   VAN: "bg-purple-100 text-purple-700",
   SOFTWARE: "bg-stone-200 text-stone-700",
+  MILEAGE: "bg-teal-100 text-teal-700",
   OTHER: "bg-stone-100 text-stone-600",
 };
 
@@ -75,6 +77,37 @@ export default async function OverheadsPage() {
             </div>
             <div className="flex items-end sm:col-span-2">
               <button className="btn-primary">Add overhead</button>
+            </div>
+          </form>
+        </Collapsible>
+      </div>
+
+      <div className="mb-4">
+        <Collapsible label="Log mileage (45p/mile)">
+          <form action={logMileage} className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="label">Miles</label>
+              <input
+                name="miles"
+                type="number"
+                step="0.1"
+                min="0"
+                inputMode="decimal"
+                className="input"
+                placeholder="e.g. 26"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Date</label>
+              <input name="date" type="date" defaultValue={toDateInput(now)} className="input" />
+            </div>
+            <div>
+              <label className="label">Note (optional)</label>
+              <input name="note" className="input" placeholder="e.g. tip runs" />
+            </div>
+            <div className="sm:col-span-3">
+              <button className="btn-primary">Log mileage</button>
             </div>
           </form>
         </Collapsible>

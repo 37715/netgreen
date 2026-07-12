@@ -181,6 +181,29 @@ async function DayView({
         defaultHourlyRate={settings.employeeRate}
       />
 
+      {(() => {
+        const stops = jobs
+          .filter((j) => j.status === "SCHEDULED" && j.customer?.address)
+          .map((j) => j.customer!.address as string);
+        if (stops.length < 1) return null;
+        const url = `https://www.google.com/maps/dir/${stops
+          .map((a) => encodeURIComponent(a))
+          .join("/")}`;
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card flex items-center justify-between gap-3 p-3.5 hover:border-brand-300"
+          >
+            <span className="text-sm font-semibold text-stone-800">
+              Today&apos;s route · {stops.length} {stops.length === 1 ? "stop" : "stops"}
+            </span>
+            <span className="text-xs font-bold text-brand-700">Open in Google Maps →</span>
+          </a>
+        );
+      })()}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <TillTile label="Done" value={`${doneCount}/${jobs.length}`} />
         <TillTile label="Takings" value={formatMoney(takings, currency)} accent />

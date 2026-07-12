@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { PageHeader, EmptyState, StatusBadge, MarginBadge } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
 import { ProjectForm } from "@/components/ProjectForm";
-import { createProject } from "@/app/actions/projects";
+import { createProject, setProjectStatus } from "@/app/actions/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,70 @@ export default async function ProjectsPage() {
         </Collapsible>
       </div>
 
+      {(() => {
+        const quotes = projects.filter((p) => p.status === "QUOTE");
+        if (quotes.length === 0) return null;
+        const quotedValue = quotes.reduce((s, p) => s + p.quotedPrice, 0);
+        const won = projects.filter(
+          (p) => p.status === "ACTIVE" || p.status === "DONE" || p.status === "PAID"
+        ).length;
+        const lost = projects.filter((p) => p.status === "LOST").length;
+        return (
+          <div className="card mb-4 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-base font-bold text-brand-900">
+                Quotes out
+              </h2>
+              <span className="text-xs text-stone-400">
+                {formatMoney(quotedValue)} quoted
+                {won + lost > 0 &&
+                  ` · winning ${Math.round((won / (won + lost)) * 100)}% of work`}
+              </span>
+            </div>
+            <ul className="mt-3 divide-y divide-stone-100">
+              {quotes.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/projects/${p.id}`}
+                      className="truncate text-sm font-semibold text-stone-800 hover:underline"
+                    >
+                      {p.title}
+                    </Link>
+                    <div className="text-xs text-stone-400">
+                      {p.customer?.name ?? "No customer"} ·{" "}
+                      <span className="ledger">{formatMoney(p.quotedPrice)}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <form action={setProjectStatus}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="status" value="ACTIVE" />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-lime-100 px-2.5 py-1 text-xs font-bold text-lime-600 hover:bg-lime-200"
+                      >
+                        Won it
+                      </button>
+                    </form>
+                    <form action={setProjectStatus}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="status" value="LOST" />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-500 hover:bg-stone-200"
+                      >
+                        Lost
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
+
       {projects.length === 0 ? (
         <EmptyState
           title="No projects yet"
@@ -41,7 +105,9 @@ export default async function ProjectsPage() {
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {projects.map((p) => {
+          {projects
+            .filter((p) => p.status !== "QUOTE")
+            .map((p) => {
             const t = projectTotals(p);
             return (
               <Link key={p.id} href={`/projects/${p.id}`} className="card p-4 hover:border-brand-300">

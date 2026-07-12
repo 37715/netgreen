@@ -33,9 +33,14 @@ export default async function CustomerEditPage({
         title={customer.name}
         subtitle="Edit customer"
         action={
-          <Link href="/customers" className="btn-secondary">
-            Back
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/customers/${customer.id}/invoice`} className="btn-primary">
+              Invoice
+            </Link>
+            <Link href="/customers" className="btn-secondary">
+              Back
+            </Link>
+          </div>
         }
       />
 

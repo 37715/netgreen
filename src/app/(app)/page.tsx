@@ -61,11 +61,14 @@ export default async function DashboardPage({
       title: true,
       price: true,
       date: true,
-      customer: { select: { name: true } },
+      customer: { select: { id: true, name: true } },
     },
     orderBy: { date: "asc" },
   });
-  const owedByCustomer = new Map<string, { total: number; visits: number; oldest: Date }>();
+  const owedByCustomer = new Map<
+    string,
+    { total: number; visits: number; oldest: Date; customerId: number | null }
+  >();
   for (const j of unpaidJobs) {
     const key = j.customer?.name ?? j.title;
     const cur = owedByCustomer.get(key);
@@ -73,7 +76,12 @@ export default async function DashboardPage({
       cur.total += j.price;
       cur.visits += 1;
     } else {
-      owedByCustomer.set(key, { total: j.price, visits: 1, oldest: j.date });
+      owedByCustomer.set(key, {
+        total: j.price,
+        visits: 1,
+        oldest: j.date,
+        customerId: j.customer?.id ?? null,
+      });
     }
   }
   const owedList = [...owedByCustomer.entries()].sort((a, b) => b[1].total - a[1].total);
@@ -150,6 +158,14 @@ export default async function DashboardPage({
             in {label} — across {summary.jobsDone} completed{" "}
             {summary.jobsDone === 1 ? "job" : "jobs"}.
           </p>
+          {summary.profit > 0 && settings.taxPotPercent > 0 && (
+            <p className="mt-2 text-xs text-brand-200">
+              Tax pot ({settings.taxPotPercent.toFixed(0)}%): put aside{" "}
+              <span className="ledger font-semibold text-white">
+                {formatMoney((summary.profit * settings.taxPotPercent) / 100, currency)}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -238,9 +254,19 @@ export default async function DashboardPage({
                     {formatDayLabel(o.oldest)}
                   </div>
                 </div>
-                <span className="ledger text-sm font-bold text-clay-600">
-                  {formatMoney(o.total, currency)}
-                </span>
+                <div className="flex shrink-0 items-center gap-2.5">
+                  {o.customerId != null && (
+                    <Link
+                      href={`/customers/${o.customerId}/invoice`}
+                      className="text-xs font-semibold text-brand-700 hover:underline"
+                    >
+                      Invoice
+                    </Link>
+                  )}
+                  <span className="ledger text-sm font-bold text-clay-600">
+                    {formatMoney(o.total, currency)}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>

@@ -20,6 +20,24 @@ export async function createOverhead(formData: FormData) {
   revalidatePath("/");
 }
 
+/** HMRC-style mileage: log miles, stored as an overhead at 45p/mile. */
+export async function logMileage(formData: FormData) {
+  const miles = parseAmount(formData.get("miles"));
+  if (miles <= 0) return;
+  const dateStr = String(formData.get("date") || "");
+  const note = String(formData.get("note") || "").trim();
+  await prisma.overhead.create({
+    data: {
+      category: "MILEAGE",
+      description: `${miles} miles @ 45p/mile${note ? ` — ${note}` : ""}`,
+      amount: Math.round(miles * 45) / 100,
+      date: dateStr ? toStoredDay(fromDateInput(dateStr)) : toStoredDay(new Date()),
+    },
+  });
+  revalidatePath("/overheads");
+  revalidatePath("/");
+}
+
 export async function deleteOverhead(formData: FormData) {
   const id = Number(formData.get("id"));
   await prisma.overhead.delete({ where: { id } });

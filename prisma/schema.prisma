@@ -15,6 +15,8 @@ model Settings {
   id           Int      @id @default(1)
   businessName String   @default("netgreen")
   employeeRate Float    @default(20)
+  // % of profit to set aside for self-assessment tax.
+  taxPotPercent Float   @default(20)
   currency     String   @default("GBP")
   updatedAt    DateTime @updatedAt
 }
@@ -142,6 +144,7 @@ enum ProjectStatus {
   ACTIVE
   DONE
   PAID
+  LOST
 }
 
 model Project {
@@ -196,6 +199,7 @@ enum OverheadCategory {
   INSURANCE
   VAN
   SOFTWARE
+  MILEAGE
   OTHER
 }
 

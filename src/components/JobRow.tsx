@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { setJobStatus, setJobPayment, moveJob, deleteJob } from "@/app/actions/jobs";
+import {
+  setJobStatus,
+  setJobPayment,
+  updateJobNotes,
+  moveJob,
+  deleteJob,
+} from "@/app/actions/jobs";
 import { InlinePrice } from "@/components/InlinePrice";
 import { formatHourlyBreakdown } from "@/lib/money";
 import {
@@ -10,6 +16,7 @@ import {
   ChevronDownIcon,
   TrashIcon,
   GripIcon,
+  NoteIcon,
 } from "@/components/icons";
 
 export type CrewOption = { id: number | null; name: string; colour: string };
@@ -27,6 +34,7 @@ export type JobRowData = {
   recurringSourceCustomerId: number | null;
   paidAt?: Date | string | null;
   paymentMethod?: "CASH" | "BANK" | null;
+  notes?: string;
 };
 
 export function JobRow({
@@ -56,14 +64,12 @@ export function JobRow({
   const paid = !!job.paidAt;
   const [menuOpen, setMenuOpen] = useState(false);
   const [payMenuOpen, setPayMenuOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const canAssign = !!onAssign && (crewOptions?.length ?? 0) > 0;
 
   return (
-    <div
-      className={`flex items-center gap-2 py-2.5 ${
-        dragging ? "opacity-40" : ""
-      }`}
-    >
+    <div className={`py-2.5 ${dragging ? "opacity-40" : ""}`}>
+    <div className="flex items-center gap-2">
       {draggable && (
         <div className="relative shrink-0">
           <span
@@ -236,6 +242,16 @@ export function JobRow({
       <InlinePrice id={job.id} price={job.price} />
 
       <div className="flex shrink-0 items-center text-stone-300">
+        <button
+          type="button"
+          onClick={() => setNotesOpen((o) => !o)}
+          aria-label="Visit notes"
+          className={`flex h-7 w-6 items-center justify-center rounded hover:bg-stone-100 ${
+            job.notes ? "text-lime-600 hover:text-lime-600" : "hover:text-stone-600"
+          }`}
+        >
+          <NoteIcon className="h-4 w-4" />
+        </button>
         <form action={moveJob}>
           <input type="hidden" name="id" value={job.id} />
           <input type="hidden" name="dir" value="up" />
@@ -271,6 +287,32 @@ export function JobRow({
           </button>
         </form>
       </div>
+    </div>
+
+    {!notesOpen && job.notes && (
+      <p className="mt-1 ml-11 truncate text-xs text-stone-400">{job.notes}</p>
+    )}
+    {notesOpen && (
+      <form
+        action={async (fd) => {
+          await updateJobNotes(fd);
+          setNotesOpen(false);
+        }}
+        className="mt-2 ml-11 flex items-end gap-2"
+      >
+        <input type="hidden" name="id" value={job.id} />
+        <textarea
+          name="notes"
+          rows={2}
+          defaultValue={job.notes ?? ""}
+          placeholder="Gate code, what was done, anything for next visit..."
+          className="input flex-1 !py-1.5 text-sm"
+        />
+        <button type="submit" className="btn-secondary !py-1.5 !px-3 !text-sm">
+          Save
+        </button>
+      </form>
+    )}
     </div>
   );
 }

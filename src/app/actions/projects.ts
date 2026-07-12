@@ -47,6 +47,14 @@ export async function updateProject(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function setProjectStatus(formData: FormData) {
+  const id = Number(formData.get("id"));
+  const status = String(formData.get("status")) as ProjectStatus;
+  await prisma.project.update({ where: { id }, data: { status } });
+  revalidatePath("/projects");
+  revalidatePath("/");
+}
+
 export async function deleteProject(formData: FormData) {
   const id = Number(formData.get("id"));
   await prisma.scheduledJob.updateMany({

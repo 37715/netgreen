@@ -41,6 +41,19 @@ export default async function SettingsPage() {
               className="input"
             />
           </div>
+          <div>
+            <label className="label">Tax pot (% of profit to set aside)</label>
+            <input
+              name="taxPotPercent"
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              inputMode="numeric"
+              defaultValue={settings.taxPotPercent}
+              className="input"
+            />
+          </div>
           <div className="sm:col-span-2">
             <button className="btn-primary">Save</button>
           </div>

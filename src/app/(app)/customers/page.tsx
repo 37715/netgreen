@@ -32,6 +32,22 @@ export default async function CustomersPage() {
   // A round earning less per hour than you'd pay an employee is a red flag.
   const rateFloor = settings.employeeRate;
 
+  // Customers we haven't visited in 90+ days — worth a "shall we book you in?" text.
+  const lastVisits = await prisma.scheduledJob.groupBy({
+    by: ["customerId"],
+    where: { status: "DONE", customerId: { not: null } },
+    _max: { date: true },
+  });
+  const cutoff = new Date(Date.now() - 90 * 86_400_000);
+  const lapsed = customers
+    .filter((c) => c.active)
+    .map((c) => ({
+      c,
+      last: lastVisits.find((v) => v.customerId === c.id)?._max.date ?? null,
+    }))
+    .filter((x) => x.last != null && x.last < cutoff)
+    .sort((a, b) => a.last!.getTime() - b.last!.getTime());
+
   return (
     <div>
       <PageHeader
@@ -44,6 +60,37 @@ export default async function CustomersPage() {
           <CustomerForm action={createCustomer} crews={crews} />
         </Collapsible>
       </div>
+
+      {lapsed.length > 0 && (
+        <div className="card mb-4 p-5">
+          <h2 className="font-display text-base font-bold text-brand-900">
+            Worth a call
+          </h2>
+          <p className="mt-0.5 text-xs text-stone-500">
+            Not visited in 90+ days — a quick text often books them back in.
+          </p>
+          <ul className="mt-3 divide-y divide-stone-100">
+            {lapsed.slice(0, 8).map(({ c, last }) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <Link
+                    href={`/customers/${c.id}`}
+                    className="truncate text-sm font-semibold text-stone-800 hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                  <div className="truncate text-xs text-stone-400">
+                    {c.contact || c.address || "no contact saved"}
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs text-stone-400">
+                  {Math.floor((Date.now() - last!.getTime()) / 86_400_000)} days ago
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {customers.length === 0 ? (
         <EmptyState

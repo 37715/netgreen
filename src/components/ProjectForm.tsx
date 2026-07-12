@@ -5,7 +5,7 @@ type Customer = { id: number; name: string };
 export type ProjectDefaults = {
   id?: number;
   title?: string;
-  status?: "QUOTE" | "ACTIVE" | "DONE" | "PAID";
+  status?: "QUOTE" | "ACTIVE" | "DONE" | "PAID" | "LOST";
   quotedPrice?: number;
   startDate?: string;
   customerId?: number | null;
@@ -59,6 +59,7 @@ export function ProjectForm({
           <option value="ACTIVE">Active</option>
           <option value="DONE">Done</option>
           <option value="PAID">Paid</option>
+          <option value="LOST">Lost</option>
         </select>
       </div>
 

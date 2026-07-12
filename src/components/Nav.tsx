@@ -48,7 +48,7 @@ function Wordmark({ businessName }: { businessName: string }) {
 export function Sidebar({ businessName }: { businessName: string }) {
   const pathname = usePathname();
   return (
-    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-stone-200 bg-white">
+    <aside className="hidden print:hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-stone-200 bg-white">
       <div className="flex items-center px-5 h-16 border-b border-stone-100">
         <Wordmark businessName={businessName} />
       </div>
@@ -84,7 +84,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
 
 export function MobileHeader({ businessName }: { businessName: string }) {
   return (
-    <header className="lg:hidden sticky top-0 z-30 flex items-center px-4 h-14 border-b border-stone-200 bg-stone-50/90 backdrop-blur">
+    <header className="lg:hidden print:hidden sticky top-0 z-30 flex items-center px-4 h-14 border-b border-stone-200 bg-stone-50/90 backdrop-blur">
       <Wordmark businessName={businessName} />
     </header>
   );
@@ -93,7 +93,7 @@ export function MobileHeader({ businessName }: { businessName: string }) {
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-6 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+    <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-6 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       {links.map(({ href, label, Icon, exact }) => {
         const active = isActive(pathname, href, exact);
         return (

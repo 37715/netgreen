@@ -127,6 +127,15 @@ export function GripIcon({ className = base }: IconProps) {
   );
 }
 
+export function NoteIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 4h14v12l-4 4H5z" />
+      <path d="M15 20v-4h4M9 9h6M9 13h4" />
+    </svg>
+  );
+}
+
 export function CloudRainIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

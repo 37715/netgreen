@@ -95,6 +95,11 @@ enum PricingType {
   HOURLY
 }
 
+enum PaymentMethod {
+  CASH
+  BANK
+}
+
 model ScheduledJob {
   id          Int         @id @default(autoincrement())
   date        DateTime
@@ -112,6 +117,9 @@ model ScheduledJob {
   sortOrder   Int       @default(0)
   notes       String    @default("")
   completedAt DateTime?
+  // Payment collection: null paidAt on a DONE job means the customer still owes.
+  paidAt        DateTime?
+  paymentMethod PaymentMethod?
   customer    Customer? @relation(fields: [customerId], references: [id])
   customerId  Int?
   crew        Crew?     @relation(fields: [crewId], references: [id])

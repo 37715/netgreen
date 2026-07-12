@@ -9,6 +9,7 @@ import {
   endOfMonth,
   addDays,
   endOfDay,
+  formatDayLabel,
 } from "@/lib/dates";
 import { MarginBadge, StatusBadge } from "@/components/ui";
 
@@ -51,6 +52,32 @@ export default async function DashboardPage({
     include: { costs: true, payments: true, customer: true },
     orderBy: { createdAt: "desc" },
   });
+
+  // Completed jobs never marked paid — who still owes us, all time.
+  const unpaidJobs = await prisma.scheduledJob.findMany({
+    where: { status: "DONE", paidAt: null, price: { gt: 0 } },
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      date: true,
+      customer: { select: { name: true } },
+    },
+    orderBy: { date: "asc" },
+  });
+  const owedByCustomer = new Map<string, { total: number; visits: number; oldest: Date }>();
+  for (const j of unpaidJobs) {
+    const key = j.customer?.name ?? j.title;
+    const cur = owedByCustomer.get(key);
+    if (cur) {
+      cur.total += j.price;
+      cur.visits += 1;
+    } else {
+      owedByCustomer.set(key, { total: j.price, visits: 1, oldest: j.date });
+    }
+  }
+  const owedList = [...owedByCustomer.entries()].sort((a, b) => b[1].total - a[1].total);
+  const totalJobsOwed = unpaidJobs.reduce((s, j) => s + j.price, 0);
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
   const league = withTotals
     .filter((x) => x.t.margin !== null)
@@ -180,6 +207,44 @@ export default async function DashboardPage({
         >
           {formatMoney(summary.profit, currency)}
         </span>
+      </div>
+
+      {/* Chase list — completed jobs not yet paid */}
+      <div className="mt-4 card p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-base font-bold text-brand-900">
+            Unpaid jobs
+          </h2>
+          <span
+            className={`ledger text-sm font-bold ${
+              totalJobsOwed > 0 ? "text-clay-600" : "text-stone-400"
+            }`}
+          >
+            {formatMoney(totalJobsOwed, currency)}
+          </span>
+        </div>
+        {owedList.length === 0 ? (
+          <p className="mt-3 text-sm text-stone-500">
+            Every completed job is paid up. Nice.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-stone-100">
+            {owedList.map(([name, o]) => (
+              <li key={name} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-stone-800">{name}</div>
+                  <div className="text-xs text-stone-400">
+                    {o.visits} {o.visits === 1 ? "visit" : "visits"} · oldest{" "}
+                    {formatDayLabel(o.oldest)}
+                  </div>
+                </div>
+                <span className="ledger text-sm font-bold text-clay-600">
+                  {formatMoney(o.total, currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Project insights */}

@@ -21,12 +21,18 @@ const bricolage = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "netgreen",
   description: "Jobs, scheduling, costs, margins and profit for netgreen",
+  icons: { apple: "/apple-touch-icon.png" },
+  appleWebApp: {
+    capable: true,
+    title: "netgreen",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#16a34a",
+  themeColor: "#0e3f27",
 };
 
 export default function RootLayout({

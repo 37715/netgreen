@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { setJobStatus, moveJob, deleteJob } from "@/app/actions/jobs";
+import { setJobStatus, setJobPayment, moveJob, deleteJob } from "@/app/actions/jobs";
 import { InlinePrice } from "@/components/InlinePrice";
 import { formatHourlyBreakdown } from "@/lib/money";
 import {
@@ -25,6 +25,8 @@ export type JobRowData = {
   workers?: number | null;
   customer: { id: number; name: string; address?: string } | null;
   recurringSourceCustomerId: number | null;
+  paidAt?: Date | string | null;
+  paymentMethod?: "CASH" | "BANK" | null;
 };
 
 export function JobRow({
@@ -51,7 +53,9 @@ export function JobRow({
   onAssign?: (crewId: number | null) => void;
 }) {
   const done = job.status === "DONE";
+  const paid = !!job.paidAt;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [payMenuOpen, setPayMenuOpen] = useState(false);
   const canAssign = !!onAssign && (crewOptions?.length ?? 0) > 0;
 
   return (
@@ -172,6 +176,62 @@ export function JobRow({
           </div>
         )}
       </div>
+
+      {done && job.price > 0 && (
+        <div className="relative shrink-0">
+          {paid ? (
+            <form action={setJobPayment}>
+              <input type="hidden" name="id" value={job.id} />
+              <input type="hidden" name="method" value="UNPAID" />
+              <button
+                type="submit"
+                title="Tap to mark unpaid"
+                className="rounded-lg bg-lime-100 px-2 py-1 text-[11px] font-bold text-lime-600"
+              >
+                Paid{job.paymentMethod ? ` · ${job.paymentMethod === "CASH" ? "cash" : "bank"}` : ""}
+              </button>
+            </form>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setPayMenuOpen((o) => !o)}
+                className="rounded-lg bg-clay-100 px-2 py-1 text-[11px] font-bold text-clay-600"
+              >
+                Due
+              </button>
+              {payMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close"
+                    onClick={() => setPayMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-8 z-20 flex min-w-[120px] flex-col rounded-xl border border-stone-200 bg-white py-1 shadow-lg">
+                    <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+                      Paid by
+                    </div>
+                    {(["CASH", "BANK"] as const).map((m) => (
+                      <form key={m} action={setJobPayment}>
+                        <input type="hidden" name="id" value={job.id} />
+                        <input type="hidden" name="method" value={m} />
+                        <button
+                          type="submit"
+                          onClick={() => setPayMenuOpen(false)}
+                          className="w-full px-3 py-2 text-left text-sm font-semibold text-stone-700 hover:bg-stone-50"
+                        >
+                          {m === "CASH" ? "Cash" : "Bank transfer"}
+                        </button>
+                      </form>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <InlinePrice id={job.id} price={job.price} />
 

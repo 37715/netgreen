@@ -203,7 +203,26 @@ export async function setJobStatus(formData: FormData) {
     data: {
       status,
       completedAt: status === "DONE" ? new Date() : null,
+      // Un-doing a job also clears its payment record.
+      ...(status !== "DONE" ? { paidAt: null, paymentMethod: null } : {}),
     },
+  });
+  revalidatePath("/calendar");
+  revalidatePath("/");
+}
+
+export async function setJobPayment(formData: FormData) {
+  const id = Number(formData.get("id"));
+  const method = String(formData.get("method")); // "CASH" | "BANK" | "UNPAID"
+  await prisma.scheduledJob.update({
+    where: { id },
+    data:
+      method === "UNPAID"
+        ? { paidAt: null, paymentMethod: null }
+        : {
+            paidAt: new Date(),
+            paymentMethod: method === "CASH" ? "CASH" : "BANK",
+          },
   });
   revalidatePath("/calendar");
   revalidatePath("/");

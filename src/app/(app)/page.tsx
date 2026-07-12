@@ -126,11 +126,14 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Breakdown ledger */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="card p-5">
-          <h2 className="font-display text-base font-bold text-brand-900">Money in</h2>
-          <dl className="mt-3 space-y-2.5 text-sm">
+      {/* Money in / Money out — two separate ledgers */}
+      <div className="mt-4 grid items-stretch gap-4 lg:grid-cols-2">
+        <div className="card flex flex-col p-5">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-lime-500" />
+            <h2 className="font-display text-base font-bold text-brand-900">Money in</h2>
+          </div>
+          <dl className="mt-4 space-y-2.5 text-sm">
             <Row label="Maintenance & quick jobs" value={formatMoney(summary.quickIncome, currency)} />
             {summary.wasteIncome > 0 && (
               <SubRow
@@ -139,105 +142,122 @@ export default async function DashboardPage({
               />
             )}
             <Row label="Project payments" value={formatMoney(summary.projectIncome, currency)} />
+          </dl>
+          <div className="mt-auto pt-4">
             <Total label="Revenue" value={formatMoney(summary.revenue, currency)} />
-          </dl>
-
-          <h2 className="mt-6 font-display text-base font-bold text-brand-900">Money out</h2>
-          <dl className="mt-3 space-y-2.5 text-sm">
-            <Row label="Overheads" value={formatMoney(summary.overheadCosts, currency)} />
-            <Row label="Project materials & costs" value={formatMoney(summary.projectCosts, currency)} />
-            <Row label="Extra crew wages" value={formatMoney(summary.labourCosts, currency)} />
-            <Total label="Costs" value={formatMoney(summary.costs, currency)} />
-          </dl>
-
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3">
-            <span className="font-display font-bold text-brand-900">Profit</span>
-            <span
-              className={`ledger text-lg font-extrabold ${
-                profitPositive ? "text-brand-700" : "text-clay-600"
-              }`}
-            >
-              {formatMoney(summary.profit, currency)}
-            </span>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="card p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-base font-bold text-brand-900">
-                Best margins
-              </h2>
-              <Link href="/projects" className="text-xs font-semibold text-brand-700 hover:underline">
-                All projects
-              </Link>
-            </div>
-            {league.length === 0 ? (
-              <p className="mt-3 text-sm text-stone-500">
-                No project figures yet. Add a project and its margin shows here.
-              </p>
-            ) : (
-              <ul className="mt-3 divide-y divide-stone-100">
-                {league.map(({ p, t }) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 hover:bg-stone-50"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-stone-800">
-                          {p.title}
-                        </div>
-                        <div className="ledger text-xs text-stone-500">
-                          {formatMoney(t.profit, currency)} profit
-                        </div>
-                      </div>
-                      <MarginBadge margin={t.margin} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+        <div className="card flex flex-col p-5">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-clay-500" />
+            <h2 className="font-display text-base font-bold text-brand-900">Money out</h2>
           </div>
+          <dl className="mt-4 space-y-2.5 text-sm">
+            <Row label="Overheads" value={formatMoney(summary.overheadCosts, currency)} />
+            <Row label="Project materials & costs" value={formatMoney(summary.projectCosts, currency)} />
+            <Row label="Extra crew wages" value={formatMoney(summary.labourCosts, currency)} />
+          </dl>
+          <div className="mt-auto pt-4">
+            <Total label="Costs" value={formatMoney(summary.costs, currency)} />
+          </div>
+        </div>
+      </div>
 
-          <div className="card p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-base font-bold text-brand-900">
-                Still owed
-              </h2>
-              <span className="ledger text-sm font-bold text-clay-600">
-                {formatMoney(totalOutstanding, currency)}
-              </span>
-            </div>
-            {outstanding.length === 0 ? (
-              <p className="mt-3 text-sm text-stone-500">
-                Nobody owes you right now. Nice.
-              </p>
-            ) : (
-              <ul className="mt-3 divide-y divide-stone-100">
-                {outstanding.slice(0, 5).map(({ p, t }) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <Link href={`/projects/${p.id}`} className="truncate text-sm font-semibold text-stone-800 hover:underline">
-                        {p.title}
-                      </Link>
-                      <div className="text-xs text-stone-400">
-                        {p.customer?.name ?? "No customer"}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="ledger text-sm font-bold text-stone-900">
-                        {formatMoney(t.outstanding, currency)}
-                      </div>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <StatusBadge status={p.status} />
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+      {/* Profit reconciliation */}
+      <div className="mt-4 flex items-center justify-between rounded-2xl bg-brand-50 px-5 py-4">
+        <div>
+          <div className="font-display font-bold text-brand-900">Profit</div>
+          <div className="text-xs text-stone-500">
+            Revenue {formatMoney(summary.revenue, currency)} − Costs{" "}
+            {formatMoney(summary.costs, currency)}
           </div>
+        </div>
+        <span
+          className={`ledger text-2xl font-extrabold ${
+            profitPositive ? "text-brand-700" : "text-clay-600"
+          }`}
+        >
+          {formatMoney(summary.profit, currency)}
+        </span>
+      </div>
+
+      {/* Project insights */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-base font-bold text-brand-900">
+              Best margins
+            </h2>
+            <Link href="/projects" className="text-xs font-semibold text-brand-700 hover:underline">
+              All projects
+            </Link>
+          </div>
+          {league.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-500">
+              No project figures yet. Add a project and its margin shows here.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-stone-100">
+              {league.map(({ p, t }) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 hover:bg-stone-50"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-stone-800">
+                        {p.title}
+                      </div>
+                      <div className="ledger text-xs text-stone-500">
+                        {formatMoney(t.profit, currency)} profit
+                      </div>
+                    </div>
+                    <MarginBadge margin={t.margin} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-base font-bold text-brand-900">
+              Still owed
+            </h2>
+            <span className="ledger text-sm font-bold text-clay-600">
+              {formatMoney(totalOutstanding, currency)}
+            </span>
+          </div>
+          {outstanding.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-500">
+              Nobody owes you right now. Nice.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-stone-100">
+              {outstanding.slice(0, 5).map(({ p, t }) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <Link href={`/projects/${p.id}`} className="truncate text-sm font-semibold text-stone-800 hover:underline">
+                      {p.title}
+                    </Link>
+                    <div className="text-xs text-stone-400">
+                      {p.customer?.name ?? "No customer"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="ledger text-sm font-bold text-stone-900">
+                      {formatMoney(t.outstanding, currency)}
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <StatusBadge status={p.status} />
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

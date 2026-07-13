@@ -9,9 +9,9 @@ import {
   endOfMonth,
   addDays,
   endOfDay,
-  formatDayLabel,
 } from "@/lib/dates";
-import { MarginBadge, StatusBadge } from "@/components/ui";
+import { MarginBadge } from "@/components/ui";
+import { StillOwed, type OwedItem } from "@/components/StillOwed";
 
 export const dynamic = "force-dynamic";
 
@@ -48,53 +48,43 @@ export default async function DashboardPage({
   const currency = settings.currency;
   const summary = await getRangeSummary(from, to);
 
-  const projects = await prisma.project.findMany({
-    include: { costs: true, payments: true, customer: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [projects, debts] = await Promise.all([
+    prisma.project.findMany({
+      include: { costs: true, payments: true, customer: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.debt.findMany({
+      where: { paidAt: null },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
-  // Completed jobs never marked paid — who still owes us, all time.
-  const unpaidJobs = await prisma.scheduledJob.findMany({
-    where: { status: "DONE", paidAt: null, price: { gt: 0 } },
-    select: {
-      id: true,
-      title: true,
-      price: true,
-      date: true,
-      customer: { select: { id: true, name: true } },
-    },
-    orderBy: { date: "asc" },
-  });
-  const owedByCustomer = new Map<
-    string,
-    { total: number; visits: number; oldest: Date; customerId: number | null }
-  >();
-  for (const j of unpaidJobs) {
-    const key = j.customer?.name ?? j.title;
-    const cur = owedByCustomer.get(key);
-    if (cur) {
-      cur.total += j.price;
-      cur.visits += 1;
-    } else {
-      owedByCustomer.set(key, {
-        total: j.price,
-        visits: 1,
-        oldest: j.date,
-        customerId: j.customer?.id ?? null,
-      });
-    }
-  }
-  const owedList = [...owedByCustomer.entries()].sort((a, b) => b[1].total - a[1].total);
-  const totalJobsOwed = unpaidJobs.reduce((s, j) => s + j.price, 0);
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
   const league = withTotals
     .filter((x) => x.t.margin !== null)
     .sort((a, b) => (b.t.margin ?? 0) - (a.t.margin ?? 0))
     .slice(0, 6);
-  const outstanding = withTotals
-    .filter((x) => x.t.outstanding > 0)
-    .sort((a, b) => b.t.outstanding - a.t.outstanding);
-  const totalOutstanding = outstanding.reduce((s, x) => s + x.t.outstanding, 0);
+
+  const owedItems: OwedItem[] = [
+    ...withTotals
+      .filter((x) => x.t.outstanding > 0)
+      .map(({ p, t }) => ({
+        kind: "project" as const,
+        id: p.id,
+        title: p.title,
+        customerName: p.customer?.name ?? null,
+        amount: t.outstanding,
+        status: p.status,
+      })),
+    ...debts.map((d) => ({
+      kind: "debt" as const,
+      id: d.id,
+      name: d.name,
+      amount: d.amount,
+    })),
+  ].sort((a, b) => b.amount - a.amount);
+
+  const totalOutstanding = owedItems.reduce((s, x) => s + x.amount, 0);
 
   const ranges: { key: RangeKey; label: string }[] = [
     { key: "week", label: "Week" },
@@ -227,54 +217,6 @@ export default async function DashboardPage({
         </span>
       </div>
 
-      {/* Chase list — completed jobs not yet paid */}
-      <div className="mt-4 card p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-base font-bold text-brand-900">
-            Unpaid jobs
-          </h2>
-          <span
-            className={`ledger text-sm font-bold ${
-              totalJobsOwed > 0 ? "text-clay-600" : "text-stone-400"
-            }`}
-          >
-            {formatMoney(totalJobsOwed, currency)}
-          </span>
-        </div>
-        {owedList.length === 0 ? (
-          <p className="mt-3 text-sm text-stone-500">
-            Every completed job is paid up. Nice.
-          </p>
-        ) : (
-          <ul className="mt-3 divide-y divide-stone-100">
-            {owedList.map(([name, o]) => (
-              <li key={name} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-stone-800">{name}</div>
-                  <div className="text-xs text-stone-400">
-                    {o.visits} {o.visits === 1 ? "visit" : "visits"} · oldest{" "}
-                    {formatDayLabel(o.oldest)}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2.5">
-                  {o.customerId != null && (
-                    <Link
-                      href={`/customers/${o.customerId}/invoice`}
-                      className="text-xs font-semibold text-brand-700 hover:underline"
-                    >
-                      Invoice
-                    </Link>
-                  )}
-                  <span className="ledger text-sm font-bold text-clay-600">
-                    {formatMoney(o.total, currency)}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
       {/* Project insights */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
@@ -314,44 +256,7 @@ export default async function DashboardPage({
           )}
         </div>
 
-        <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold text-brand-900">
-              Still owed
-            </h2>
-            <span className="ledger text-sm font-bold text-clay-600">
-              {formatMoney(totalOutstanding, currency)}
-            </span>
-          </div>
-          {outstanding.length === 0 ? (
-            <p className="mt-3 text-sm text-stone-500">
-              Nobody owes you right now. Nice.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y divide-stone-100">
-              {outstanding.slice(0, 5).map(({ p, t }) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <div className="min-w-0">
-                    <Link href={`/projects/${p.id}`} className="truncate text-sm font-semibold text-stone-800 hover:underline">
-                      {p.title}
-                    </Link>
-                    <div className="text-xs text-stone-400">
-                      {p.customer?.name ?? "No customer"}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="ledger text-sm font-bold text-stone-900">
-                      {formatMoney(t.outstanding, currency)}
-                    </div>
-                    <div className="flex items-center justify-end gap-1.5">
-                      <StatusBadge status={p.status} />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <StillOwed items={owedItems} total={totalOutstanding} currency={currency} />
       </div>
     </div>
   );

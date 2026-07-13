@@ -232,7 +232,6 @@ async function DayView({
 
       <RainBump
         date={dateStr}
-        nextDate={toDateInput(addDays(selected, 1))}
         remaining={jobs.filter((j) => j.status === "SCHEDULED").length}
       />
     </div>

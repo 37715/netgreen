@@ -212,57 +212,19 @@ export async function setJobStatus(formData: FormData) {
 }
 
 /**
- * Rain-day bump: move every not-yet-done job on a day to another date.
- * Recurring occurrences leave an exception behind so the original day
- * isn't refilled on the next calendar load.
+ * Rain day off: mark every not-yet-done job on this day as skipped.
+ * Jobs stay on the date (nothing is moved). Existing rows still block
+ * recurring materialization, so the day stays closed.
  */
-export async function bumpDay(formData: FormData) {
+export async function rainOffDay(formData: FormData) {
   const from = fromDateInput(String(formData.get("from") || ""));
-  const to = fromDateInput(String(formData.get("to") || ""));
-  if (toStoredDay(from).getTime() === toStoredDay(to).getTime()) return;
-
-  const jobs = await prisma.scheduledJob.findMany({
+  await prisma.scheduledJob.updateMany({
     where: {
       date: { gte: startOfDay(from), lte: endOfDay(from) },
       status: "SCHEDULED",
     },
-    orderBy: { sortOrder: "asc" },
+    data: { status: "SKIPPED", paidAt: null, paymentMethod: null },
   });
-  if (jobs.length === 0) return;
-
-  const base = await prisma.scheduledJob.findFirst({
-    where: { date: { gte: startOfDay(to), lte: endOfDay(to) } },
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  });
-  let order = (base?.sortOrder ?? -1) + 1;
-
-  await prisma.$transaction([
-    ...jobs.map((j) =>
-      prisma.scheduledJob.update({
-        where: { id: j.id },
-        data: { date: toStoredDay(to), sortOrder: order++ },
-      })
-    ),
-    ...jobs
-      .filter((j) => j.recurringSourceCustomerId)
-      .map((j) =>
-        prisma.scheduleException.upsert({
-          where: {
-            customerId_date: {
-              customerId: j.recurringSourceCustomerId!,
-              date: toStoredDay(from),
-            },
-          },
-          update: {},
-          create: {
-            customerId: j.recurringSourceCustomerId!,
-            date: toStoredDay(from),
-          },
-        })
-      ),
-  ]);
-
   revalidatePath("/calendar");
   revalidatePath("/");
 }

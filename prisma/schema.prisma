@@ -222,3 +222,13 @@ model Overhead {
   amount      Float            @default(0)
   createdAt   DateTime         @default(now())
 }
+
+// Simple IOU: someone owes you a lump sum (shown under Still owed on Money).
+model Debt {
+  id        Int       @id @default(autoincrement())
+  name      String
+  amount    Float     @default(0)
+  note      String    @default("")
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+}

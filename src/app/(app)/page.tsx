@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import { getRangeSummary, projectTotals } from "@/lib/finance";
+import {
+  getRangeSummary,
+  getRevenueSharePayouts,
+  projectTotals,
+} from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import {
   startOfWeek,
@@ -12,6 +16,7 @@ import {
 } from "@/lib/dates";
 import { MarginBadge } from "@/components/ui";
 import { StillOwed, type OwedItem } from "@/components/StillOwed";
+import { RevenueShareCard } from "@/components/RevenueShareCard";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +51,9 @@ export default async function DashboardPage({
 
   const settings = await getSettings();
   const currency = settings.currency;
-  const summary = await getRangeSummary(from, to);
 
-  const [projects, debts] = await Promise.all([
+  const [summary, projects, debts, sharePayouts] = await Promise.all([
+    getRangeSummary(from, to),
     prisma.project.findMany({
       include: { costs: true, payments: true, customer: true },
       orderBy: { createdAt: "desc" },
@@ -57,6 +62,7 @@ export default async function DashboardPage({
       where: { paidAt: null },
       orderBy: { createdAt: "desc" },
     }),
+    getRevenueSharePayouts(from, to),
   ]);
 
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
@@ -216,6 +222,12 @@ export default async function DashboardPage({
           {formatMoney(summary.profit, currency)}
         </span>
       </div>
+
+      <RevenueShareCard
+        payouts={sharePayouts}
+        currency={currency}
+        rangeLabel={label}
+      />
 
       {/* Project insights */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

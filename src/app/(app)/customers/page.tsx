@@ -17,10 +17,13 @@ const recurrenceLabel: Record<string, string> = {
 };
 
 export default async function CustomersPage() {
-  const [customers, crews, settings] = await Promise.all([
+  const [customers, crews, settings, revenueShares] = await Promise.all([
     prisma.customer.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
-      include: { defaultCrew: { select: { name: true } } },
+      include: {
+        defaultCrew: { select: { name: true } },
+        revenueShare: { select: { id: true, name: true } },
+      },
     }),
     prisma.crew.findMany({
       where: { active: true },
@@ -28,6 +31,11 @@ export default async function CustomersPage() {
       select: { id: true, name: true },
     }),
     getSettings(),
+    prisma.revenueShare.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, percent: true },
+    }),
   ]);
   // A round earning less per hour than you'd pay an employee is a red flag.
   const rateFloor = settings.employeeRate;
@@ -57,7 +65,11 @@ export default async function CustomersPage() {
 
       <div className="mb-4">
         <Collapsible label="Add a customer">
-          <CustomerForm action={createCustomer} crews={crews} />
+          <CustomerForm
+            action={createCustomer}
+            crews={crews}
+            revenueShares={revenueShares}
+          />
         </Collapsible>
       </div>
 
@@ -114,6 +126,11 @@ export default async function CustomersPage() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {c.revenueShare && (
+                  <span className="badge bg-stone-100 text-stone-600">
+                    {c.revenueShare.name}
+                  </span>
+                )}
                 {c.recurrence !== "NONE" && (
                   <span className="badge bg-brand-100 text-brand-700">
                     {recurrenceLabel[c.recurrence]}

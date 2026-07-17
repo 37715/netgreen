@@ -12,6 +12,7 @@ function readCustomer(formData: FormData) {
   const anchorStr = String(formData.get("recurrenceAnchor") || "");
   const priceStr = String(formData.get("defaultPrice") || "");
   const crewIdRaw = formData.get("defaultCrewId");
+  const shareRaw = String(formData.get("revenueShareId") || "");
   return {
     name: String(formData.get("name") || "").trim(),
     contact: String(formData.get("contact") || ""),
@@ -26,6 +27,7 @@ function readCustomer(formData: FormData) {
       return m > 0 ? m : null;
     })(),
     defaultCrewId: crewIdRaw ? Number(crewIdRaw) : null,
+    revenueShareId: shareRaw ? Number(shareRaw) : null,
   };
 }
 
@@ -35,6 +37,8 @@ export async function createCustomer(formData: FormData) {
   await prisma.customer.create({ data });
   revalidatePath("/customers");
   revalidatePath("/calendar");
+  revalidatePath("/");
+  revalidatePath("/revenue-share");
 }
 
 export async function updateCustomer(formData: FormData) {
@@ -44,6 +48,8 @@ export async function updateCustomer(formData: FormData) {
   await prisma.customer.update({ where: { id }, data });
   revalidatePath("/customers");
   revalidatePath("/calendar");
+  revalidatePath("/");
+  revalidatePath("/revenue-share");
   redirect("/customers");
 }
 

@@ -83,10 +83,15 @@ model Customer {
   typicalMinutes   Int?
   defaultCrew      Crew?          @relation(fields: [defaultCrewId], references: [id])
   defaultCrewId    Int?
+  // Optional revenue-share deal this customer belongs to (e.g. acquired book).
+  revenueShare     RevenueShare?  @relation(fields: [revenueShareId], references: [id], onDelete: SetNull)
+  revenueShareId   Int?
   active           Boolean        @default(true)
   jobs             ScheduledJob[]
   projects         Project[]
   createdAt        DateTime       @default(now())
+
+  @@index([revenueShareId])
 }
 
 enum JobStatus {
@@ -231,4 +236,16 @@ model Debt {
   note      String    @default("")
   paidAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// % of labour takings from a tagged customer book (e.g. seller earn-out).
+// Weekly/period amount = sum(done job price − waste) × percent / 100.
+model RevenueShare {
+  id        Int        @id @default(autoincrement())
+  name      String
+  percent   Float
+  active    Boolean    @default(true)
+  notes     String     @default("")
+  customers Customer[]
+  createdAt DateTime   @default(now())
 }

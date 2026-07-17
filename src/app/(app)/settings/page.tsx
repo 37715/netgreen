@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { auth, isAuthEnabled } from "@/auth";
@@ -58,6 +59,18 @@ export default async function SettingsPage() {
             <button className="btn-primary">Save</button>
           </div>
         </form>
+      </div>
+
+      <div className="card mt-4 flex items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="text-sm font-bold text-stone-800">Revenue share</h2>
+          <p className="mt-0.5 text-xs text-stone-500">
+            % deals on a tagged customer book — shown on Money each period.
+          </p>
+        </div>
+        <Link href="/revenue-share" className="btn-secondary">
+          Manage
+        </Link>
       </div>
 
       <div className="card p-5 mt-4">

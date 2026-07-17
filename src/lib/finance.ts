@@ -108,3 +108,122 @@ export function projectTotals(p: {
 function sum(xs: number[]): number {
   return xs.reduce((a, b) => a + b, 0);
 }
+
+export type RevenueShareLine = {
+  customerId: number;
+  customerName: string;
+  jobs: number;
+  labourTakings: number;
+  shareOwed: number;
+};
+
+export type RevenueSharePayout = {
+  id: number;
+  name: string;
+  percent: number;
+  customerCount: number;
+  jobs: number;
+  labourTakings: number;
+  shareOwed: number;
+  lines: RevenueShareLine[];
+};
+
+/** Labour takings on a job = price minus logged waste (materials not tracked on rounds). */
+export function jobLabourTakings(job: {
+  price: number;
+  wasteBags: number | null;
+  wasteBagPrice: number | null;
+}): number {
+  const waste = (job.wasteBags ?? 0) * (job.wasteBagPrice ?? 0);
+  return Math.max(0, job.price - waste);
+}
+
+/**
+ * For each active revenue-share deal, sum labour takings from DONE calendar
+ * jobs for tagged customers in [from, to], then apply the deal percent.
+ */
+export async function getRevenueSharePayouts(
+  from: Date,
+  to: Date
+): Promise<RevenueSharePayout[]> {
+  const gte = startOfDay(from);
+  const lte = endOfDay(to);
+
+  const deals = await prisma.revenueShare.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    include: {
+      customers: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
+  });
+
+  if (deals.length === 0) return [];
+
+  const customerIds = deals.flatMap((d) => d.customers.map((c) => c.id));
+  if (customerIds.length === 0) {
+    return deals.map((d) => ({
+      id: d.id,
+      name: d.name,
+      percent: d.percent,
+      customerCount: 0,
+      jobs: 0,
+      labourTakings: 0,
+      shareOwed: 0,
+      lines: [],
+    }));
+  }
+
+  const jobs = await prisma.scheduledJob.findMany({
+    where: {
+      status: "DONE",
+      date: { gte, lte },
+      customerId: { in: customerIds },
+    },
+    select: {
+      customerId: true,
+      price: true,
+      wasteBags: true,
+      wasteBagPrice: true,
+    },
+  });
+
+  return deals.map((deal) => {
+    const ids = new Set(deal.customers.map((c) => c.id));
+    const nameById = new Map(deal.customers.map((c) => [c.id, c.name]));
+    const byCustomer = new Map<
+      number,
+      { jobs: number; labourTakings: number }
+    >();
+
+    for (const j of jobs) {
+      if (j.customerId == null || !ids.has(j.customerId)) continue;
+      const labour = jobLabourTakings(j);
+      const cur = byCustomer.get(j.customerId) ?? { jobs: 0, labourTakings: 0 };
+      cur.jobs += 1;
+      cur.labourTakings += labour;
+      byCustomer.set(j.customerId, cur);
+    }
+
+    const lines: RevenueShareLine[] = [...byCustomer.entries()]
+      .map(([customerId, v]) => ({
+        customerId,
+        customerName: nameById.get(customerId) ?? "Customer",
+        jobs: v.jobs,
+        labourTakings: v.labourTakings,
+        shareOwed: (v.labourTakings * deal.percent) / 100,
+      }))
+      .sort((a, b) => b.shareOwed - a.shareOwed);
+
+    const labourTakings = sum(lines.map((l) => l.labourTakings));
+    return {
+      id: deal.id,
+      name: deal.name,
+      percent: deal.percent,
+      customerCount: deal.customers.length,
+      jobs: sum(lines.map((l) => l.jobs)),
+      labourTakings,
+      shareOwed: (labourTakings * deal.percent) / 100,
+      lines,
+    };
+  });
+}

@@ -21,11 +21,18 @@ export default async function CustomerEditPage({
   });
   if (!customer) notFound();
 
-  const crews = await prisma.crew.findMany({
-    where: { active: true },
-    orderBy: { sortOrder: "asc" },
-    select: { id: true, name: true },
-  });
+  const [crews, revenueShares] = await Promise.all([
+    prisma.crew.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.revenueShare.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, percent: true },
+    }),
+  ]);
 
   return (
     <div>
@@ -48,6 +55,7 @@ export default async function CustomerEditPage({
         <CustomerForm
           action={updateCustomer}
           crews={crews}
+          revenueShares={revenueShares}
           submitLabel="Save changes"
           defaults={{
             id: customer.id,
@@ -62,6 +70,7 @@ export default async function CustomerEditPage({
             defaultPrice: customer.defaultPrice,
             typicalMinutes: customer.typicalMinutes,
             defaultCrewId: customer.defaultCrewId,
+            revenueShareId: customer.revenueShareId,
           }}
         />
       </div>

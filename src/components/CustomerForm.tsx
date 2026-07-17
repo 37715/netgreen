@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type Crew = { id: number; name: string };
+type ShareOption = { id: number; name: string; percent: number };
 
 export type CustomerDefaults = {
   id?: number;
@@ -15,16 +16,19 @@ export type CustomerDefaults = {
   defaultPrice?: number | null;
   typicalMinutes?: number | null;
   defaultCrewId?: number | null;
+  revenueShareId?: number | null;
 };
 
 export function CustomerForm({
   action,
   crews,
+  revenueShares = [],
   defaults = {},
   submitLabel = "Save customer",
 }: {
   action: (formData: FormData) => void | Promise<void>;
   crews: Crew[];
+  revenueShares?: ShareOption[];
   defaults?: CustomerDefaults;
   submitLabel?: string;
 }) {
@@ -137,6 +141,24 @@ export function CustomerForm({
           ))}
         </select>
       </div>
+
+      {revenueShares.length > 0 && (
+        <div>
+          <label className="label">Revenue share</label>
+          <select
+            name="revenueShareId"
+            defaultValue={defaults.revenueShareId ?? ""}
+            className="input"
+          >
+            <option value="">None — your customer</option>
+            {revenueShares.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.percent}%)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="sm:col-span-2">
         <label className="label">Notes</label>

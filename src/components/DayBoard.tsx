@@ -68,12 +68,16 @@ export function DayBoard({
         const key = String(g.id);
         const crewJobs = jobs.filter((j) => (j.crewId ?? null) === g.id);
         const crewLabour = labour.filter((l) => (l.crewId ?? null) === g.id);
-        const crewTakings = crewJobs
-          .filter((j) => j.status === "DONE")
-          .reduce((s, j) => s + j.price, 0);
+        const crewDone = crewJobs.filter((j) => j.status === "DONE");
+        const crewTakings = crewDone.reduce((s, j) => s + j.price, 0);
         const crewExpected = crewJobs.reduce((s, j) => s + j.price, 0);
         const crewWages = crewLabour.reduce((s, l) => s + l.amount, 0);
-        const crewProfit = crewTakings - crewWages;
+        const crewMaterials = crewDone.reduce(
+          (s, j) => s + (j.materialsPaid ?? 0),
+          0
+        );
+        const crewCosts = crewWages + crewMaterials;
+        const crewProfit = crewTakings - crewCosts;
         const isCrew = g.id != null;
         const isOver = overKey === key && draggingId != null;
 
@@ -212,10 +216,10 @@ export function DayBoard({
 
             <div className="flex items-center justify-between border-t border-dashed border-stone-200 bg-stone-50 px-4 py-2.5">
               <span className="eyebrow">
-                {crewWages > 0 ? "Profit" : "Takings"}
+                {crewCosts > 0 ? "Profit" : "Takings"}
               </span>
               <span className="ledger text-sm font-bold text-brand-900">
-                {crewWages > 0 ? (
+                {crewCosts > 0 ? (
                   <>
                     <span
                       className={
@@ -226,7 +230,7 @@ export function DayBoard({
                     </span>
                     <span className="ml-1.5 font-normal text-stone-400">
                       ({formatMoney(crewTakings, currency)} −{" "}
-                      {formatMoney(crewWages, currency)} wages)
+                      {formatMoney(crewCosts, currency)} costs)
                     </span>
                   </>
                 ) : (

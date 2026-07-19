@@ -148,10 +148,13 @@ async function DayView({
   ]);
   const currency = settings.currency;
 
-  const doneCount = jobs.filter((j) => j.status === "DONE").length;
-  const takings = jobs.filter((j) => j.status === "DONE").reduce((s, j) => s + j.price, 0);
+  const doneJobs = jobs.filter((j) => j.status === "DONE");
+  const doneCount = doneJobs.length;
+  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
   const wages = labour.reduce((s, l) => s + l.amount, 0);
-  const profit = takings - wages;
+  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
+  const costsToday = wages + materialsPaid;
+  const profit = takings - costsToday;
 
   const groups: GroupInfo[] = [
     ...crews,
@@ -208,9 +211,13 @@ async function DayView({
         <TillTile label="Done" value={`${doneCount}/${jobs.length}`} />
         <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
         <TillTile
-          label="Wages"
-          value={wages > 0 ? `−${formatMoney(wages, currency)}` : formatMoney(0, currency)}
-          negative={wages > 0}
+          label="Costs"
+          value={
+            costsToday > 0
+              ? `−${formatMoney(costsToday, currency)}`
+              : formatMoney(0, currency)
+          }
+          negative={costsToday > 0}
         />
         <TillTile
           label="Profit today"

@@ -8,15 +8,19 @@ import {
   deleteRevenueShare,
   setRevenueShareCustomers,
 } from "@/app/actions/revenueShares";
+import { syncCustomersFromCalendar } from "@/app/actions/customers";
 
 export const dynamic = "force-dynamic";
 
 export default async function RevenueShareDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string; count?: string }>;
 }) {
   const { id: idStr } = await params;
+  const sp = await searchParams;
   const id = Number(idStr);
   const share = await prisma.revenueShare.findUnique({
     where: { id },
@@ -26,17 +30,20 @@ export default async function RevenueShareDetailPage({
   });
   if (!share) notFound();
 
-  const customers = await prisma.customer.findMany({
-    where: { active: true },
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      address: true,
-      revenueShareId: true,
-      revenueShare: { select: { id: true, name: true } },
-    },
-  });
+  const [customers, orphanCount] = await Promise.all([
+    prisma.customer.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        revenueShareId: true,
+        revenueShare: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.scheduledJob.count({ where: { customerId: null } }),
+  ]);
 
   const selected = new Set(share.customers.map((c) => c.id));
 
@@ -51,6 +58,12 @@ export default async function RevenueShareDetailPage({
           </Link>
         }
       />
+
+      {sp.saved === "1" && (
+        <div className="mb-4 rounded-2xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
+          Saved — {sp.count ?? "0"} customers on this revenue share.
+        </div>
+      )}
 
       <div className="card p-5">
         <h2 className="mb-3 text-sm font-bold text-stone-800">Deal details</h2>
@@ -90,8 +103,23 @@ export default async function RevenueShareDetailPage({
         <h2 className="text-sm font-bold text-stone-800">Customers in this book</h2>
         <p className="mt-0.5 text-xs text-stone-500">
           Tick every customer that belongs to this share. Done jobs for them count
-          toward the weekly figure on Money. New customers stay unticked.
+          toward the weekly figure on Money. Currently {selected.size} selected ·{" "}
+          {customers.length} on the list.
         </p>
+
+        {orphanCount > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-stone-50 px-3 py-2.5">
+            <p className="text-xs text-stone-600">
+              {orphanCount} calendar jobs still aren’t on this list (old imports).
+              Sync them first, then tick Howard’s rounds.
+            </p>
+            <form action={syncCustomersFromCalendar}>
+              <button type="submit" className="btn-secondary !py-1.5 !text-xs">
+                Sync from calendar
+              </button>
+            </form>
+          </div>
+        )}
 
         <form action={setRevenueShareCustomers} className="mt-4">
           <input type="hidden" name="id" value={share.id} />

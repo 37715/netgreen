@@ -4,7 +4,10 @@ import { formatMoney } from "@/lib/money";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
 import { CustomerForm } from "@/components/CustomerForm";
-import { createCustomer } from "@/app/actions/customers";
+import {
+  createCustomer,
+  syncCustomersFromCalendar,
+} from "@/app/actions/customers";
 import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -16,27 +19,34 @@ const recurrenceLabel: Record<string, string> = {
   MONTHLY: "Monthly",
 };
 
-export default async function CustomersPage() {
-  const [customers, crews, settings, revenueShares] = await Promise.all([
-    prisma.customer.findMany({
-      orderBy: [{ active: "desc" }, { name: "asc" }],
-      include: {
-        defaultCrew: { select: { name: true } },
-        revenueShare: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.crew.findMany({
-      where: { active: true },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true },
-    }),
-    getSettings(),
-    prisma.revenueShare.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, percent: true },
-    }),
-  ]);
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ synced?: string; created?: string; linked?: string }>;
+}) {
+  const sp = await searchParams;
+  const [customers, crews, settings, revenueShares, orphanCount] =
+    await Promise.all([
+      prisma.customer.findMany({
+        orderBy: [{ active: "desc" }, { name: "asc" }],
+        include: {
+          defaultCrew: { select: { name: true } },
+          revenueShare: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.crew.findMany({
+        where: { active: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true },
+      }),
+      getSettings(),
+      prisma.revenueShare.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, percent: true },
+      }),
+      prisma.scheduledJob.count({ where: { customerId: null } }),
+    ]);
   // A round earning less per hour than you'd pay an employee is a red flag.
   const rateFloor = settings.employeeRate;
 
@@ -62,6 +72,33 @@ export default async function CustomersPage() {
         title="Customers"
         subtitle="Set a repeat schedule and they auto-fill onto the calendar. Add a typical time on site to see each round's £/hr — red means it earns less than you'd pay an employee."
       />
+
+      {sp.synced === "1" && (
+        <div className="mb-4 rounded-2xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
+          Synced from calendar — added {sp.created ?? "0"} customers and linked{" "}
+          {sp.linked ?? "0"} jobs.
+        </div>
+      )}
+
+      {orphanCount > 0 && (
+        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-stone-800">
+              {orphanCount} calendar jobs aren’t linked to a customer
+            </div>
+            <p className="text-xs text-stone-500">
+              Old Google Calendar imports only saved the name on the job. Sync
+              pulls those names into this list so you can tag them for revenue
+              share.
+            </p>
+          </div>
+          <form action={syncCustomersFromCalendar}>
+            <button type="submit" className="btn-primary shrink-0">
+              Sync from calendar
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="mb-4">
         <Collapsible label="Add a customer">

@@ -73,19 +73,18 @@ export async function setRevenueShareCustomers(formData: FormData) {
     .map((v) => Number(v))
     .filter((n) => Number.isFinite(n) && n > 0);
 
-  await prisma.$transaction([
-    prisma.customer.updateMany({
+  await prisma.$transaction(async (tx) => {
+    await tx.customer.updateMany({
       where: { revenueShareId: id },
       data: { revenueShareId: null },
-    }),
-    ...(selected.length > 0
-      ? [
-          prisma.customer.updateMany({
-            where: { id: { in: selected } },
-            data: { revenueShareId: id },
-          }),
-        ]
-      : []),
-  ]);
+    });
+    if (selected.length > 0) {
+      await tx.customer.updateMany({
+        where: { id: { in: selected } },
+        data: { revenueShareId: id },
+      });
+    }
+  });
   revalidateSharePaths(id);
+  redirect(`/revenue-share/${id}?saved=1&count=${selected.length}`);
 }

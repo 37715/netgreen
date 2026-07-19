@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { parseAmount } from "@/lib/money";
 import { fromDateInput } from "@/lib/dates";
+import { syncCustomersFromCalendarJobs } from "@/lib/sync-customers";
 import { Recurrence } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -70,4 +71,16 @@ export async function deleteCustomer(formData: FormData) {
   await prisma.customer.delete({ where: { id } });
   revalidatePath("/customers");
   revalidatePath("/calendar");
+}
+
+/** Pull names off unlinked calendar jobs into the customer list. */
+export async function syncCustomersFromCalendar() {
+  const result = await syncCustomersFromCalendarJobs();
+  revalidatePath("/customers");
+  revalidatePath("/calendar");
+  revalidatePath("/revenue-share");
+  revalidatePath("/");
+  redirect(
+    `/customers?synced=1&created=${result.created}&linked=${result.linked}`
+  );
 }

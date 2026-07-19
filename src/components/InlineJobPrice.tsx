@@ -27,7 +27,7 @@ function labourFromJob(job: JobPriceExtras): number {
   return Math.max(0, Math.round((job.price - waste - materials) * 100) / 100);
 }
 
-/** Compact total with expand panel to edit labour, waste, and materials. */
+/** Compact total with a sheet to edit labour, waste, and materials. */
 export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
   const [open, setOpen] = useState(false);
   const initialLabour = labourFromJob(job);
@@ -111,10 +111,10 @@ export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
       </button>
 
       {open && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
           <button
             type="button"
-            className="fixed inset-0 z-10 cursor-default"
+            className="absolute inset-0 bg-stone-900/40"
             aria-label="Close"
             onClick={() => setOpen(false)}
           />
@@ -123,149 +123,170 @@ export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
               await updateJobExtras(fd);
               setOpen(false);
             }}
-            className="absolute right-0 top-full z-20 mt-1 w-[min(19rem,calc(100vw-2rem))] space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-lg"
+            className="relative z-10 flex max-h-[min(85dvh,36rem)] w-full max-w-md flex-col rounded-t-2xl border border-stone-200 bg-white shadow-xl sm:rounded-2xl"
           >
             <input type="hidden" name="id" value={job.id} />
-            <div>
-              <label className="label">Labour £</label>
-              <input
-                name="labour"
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                value={labour}
-                onChange={(e) => setLabour(e.target.value)}
-                className="input !py-1.5 text-sm"
-              />
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="label mb-0">Waste removal</span>
-                <button
-                  type="button"
-                  onClick={() => setWasteOn((v) => !v)}
-                  className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
-                    wasteOn
-                      ? "border-lime-500 bg-lime-100 text-lime-600"
-                      : "border-stone-200 text-stone-600"
-                  }`}
-                >
-                  {wasteOn ? "On" : "Add"}
-                </button>
-              </div>
-              {wasteOn && (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="label">Bags</label>
-                    <input
-                      name="wasteBags"
-                      type="number"
-                      step="1"
-                      min="0"
-                      inputMode="numeric"
-                      value={wasteBags}
-                      onChange={(e) => setWasteBags(e.target.value)}
-                      className="input !py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">£ / bag</label>
-                    <input
-                      name="wasteBagPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={wasteBagPrice}
-                      onChange={(e) => setWasteBagPrice(e.target.value)}
-                      className="input !py-1.5 text-sm"
-                    />
-                  </div>
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-100 px-4 py-3">
+              <div>
+                <div className="font-display text-sm font-bold text-brand-900">
+                  Edit price
                 </div>
-              )}
+                <div className="text-xs text-stone-400">
+                  Labour, waste & materials
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="btn-ghost !py-1.5 !px-2.5 !text-xs"
+              >
+                Close
+              </button>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="label mb-0">Materials</span>
-                <button
-                  type="button"
-                  onClick={() => setMaterialsOn((v) => !v)}
-                  className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
-                    materialsOn
-                      ? "border-lime-500 bg-lime-100 text-lime-600"
-                      : "border-stone-200 text-stone-600"
-                  }`}
-                >
-                  {materialsOn ? "On" : "Add"}
-                </button>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-3">
+              <div>
+                <label className="label">Labour £</label>
+                <input
+                  name="labour"
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={labour}
+                  onChange={(e) => setLabour(e.target.value)}
+                  className="input !py-1.5 text-sm"
+                />
               </div>
-              {materialsOn && (
-                <div className="mt-2 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="label mb-0">Waste removal</span>
+                  <button
+                    type="button"
+                    onClick={() => setWasteOn((v) => !v)}
+                    className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
+                      wasteOn
+                        ? "border-lime-500 bg-lime-100 text-lime-600"
+                        : "border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    {wasteOn ? "On" : "Add"}
+                  </button>
+                </div>
+                {wasteOn && (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <label className="label">Charge £</label>
+                      <label className="label">Bags</label>
                       <input
-                        name="materialsCharge"
+                        name="wasteBags"
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        inputMode="decimal"
-                        value={materialsCharge}
-                        onChange={(e) => setMaterialsCharge(e.target.value)}
-                        placeholder="e.g. 20"
+                        inputMode="numeric"
+                        value={wasteBags}
+                        onChange={(e) => setWasteBags(e.target.value)}
                         className="input !py-1.5 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="label">We paid £</label>
+                      <label className="label">£ / bag</label>
                       <input
-                        name="materialsPaid"
+                        name="wasteBagPrice"
                         type="number"
                         step="0.01"
                         min="0"
                         inputMode="decimal"
-                        value={materialsPaid}
-                        onChange={(e) => setMaterialsPaid(e.target.value)}
-                        placeholder="e.g. 12"
+                        value={wasteBagPrice}
+                        onChange={(e) => setWasteBagPrice(e.target.value)}
                         className="input !py-1.5 text-sm"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="label">What for?</label>
-                    <input
-                      name="materialsNote"
-                      value={materialsNote}
-                      onChange={(e) => setMaterialsNote(e.target.value)}
-                      placeholder="Weedkiller, compost, plants…"
-                      className="input !py-1.5 text-sm"
-                    />
-                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="label mb-0">Materials</span>
+                  <button
+                    type="button"
+                    onClick={() => setMaterialsOn((v) => !v)}
+                    className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
+                      materialsOn
+                        ? "border-lime-500 bg-lime-100 text-lime-600"
+                        : "border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    {materialsOn ? "On" : "Add"}
+                  </button>
                 </div>
-              )}
+                {materialsOn && (
+                  <div className="mt-2 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="label">Charge £</label>
+                        <input
+                          name="materialsCharge"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          inputMode="decimal"
+                          value={materialsCharge}
+                          onChange={(e) => setMaterialsCharge(e.target.value)}
+                          placeholder="e.g. 20"
+                          className="input !py-1.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="label">We paid £</label>
+                        <input
+                          name="materialsPaid"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          inputMode="decimal"
+                          value={materialsPaid}
+                          onChange={(e) => setMaterialsPaid(e.target.value)}
+                          placeholder="e.g. 12"
+                          className="input !py-1.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">What for?</label>
+                      <input
+                        name="materialsNote"
+                        value={materialsNote}
+                        onChange={(e) => setMaterialsNote(e.target.value)}
+                        placeholder="Weedkiller, compost, plants…"
+                        className="input !py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
-              <span className="ledger text-sm font-bold text-brand-800">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-stone-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <span className="ledger text-base font-bold text-brand-800">
                 {formatMoney(previewTotal)}
               </span>
               <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="btn-ghost !py-1.5 !px-2.5 !text-xs"
+                  className="btn-ghost !py-2 !px-3 !text-sm"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary !py-1.5 !px-2.5 !text-xs">
+                <button type="submit" className="btn-primary !py-2 !px-4 !text-sm">
                   Save
                 </button>
               </div>
             </div>
           </form>
-        </>
+        </div>
       )}
     </div>
   );

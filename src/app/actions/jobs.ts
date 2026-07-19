@@ -18,6 +18,41 @@ async function nextSortOrder(date: Date, crewId: number | null): Promise<number>
   return (last?.sortOrder ?? -1) + 1;
 }
 
+function readExtras(formData: FormData): {
+  wasteBags: number | null;
+  wasteBagPrice: number | null;
+  wasteTotal: number;
+  materialsCharge: number | null;
+  materialsPaid: number | null;
+  materialsNote: string;
+  materialsChargeTotal: number;
+} {
+  const wasteBags = Math.max(0, Math.round(parseAmount(formData.get("wasteBags"))));
+  const wasteBagPrice = parseAmount(formData.get("wasteBagPrice"));
+  const hasWaste = wasteBags > 0 && wasteBagPrice > 0;
+  const wasteTotal = hasWaste ? computeWasteTotal(wasteBags, wasteBagPrice) : 0;
+
+  // Accept legacy field name from older forms.
+  const chargeRaw = parseAmount(
+    formData.get("materialsCharge") ?? formData.get("materialsCost")
+  );
+  const paidRaw = parseAmount(formData.get("materialsPaid"));
+  const materialsNote = String(formData.get("materialsNote") || "").trim();
+  const hasMaterials = chargeRaw > 0 || paidRaw > 0;
+  const materialsChargeTotal = chargeRaw > 0 ? Math.round(chargeRaw * 100) / 100 : 0;
+  const materialsPaidTotal = paidRaw > 0 ? Math.round(paidRaw * 100) / 100 : 0;
+
+  return {
+    wasteBags: hasWaste ? wasteBags : null,
+    wasteBagPrice: hasWaste ? wasteBagPrice : null,
+    wasteTotal,
+    materialsCharge: hasMaterials && materialsChargeTotal > 0 ? materialsChargeTotal : null,
+    materialsPaid: hasMaterials && materialsPaidTotal > 0 ? materialsPaidTotal : null,
+    materialsNote: hasMaterials ? materialsNote : "",
+    materialsChargeTotal,
+  };
+}
+
 function readJobPrice(formData: FormData): {
   price: number;
   basePrice: number;
@@ -27,16 +62,16 @@ function readJobPrice(formData: FormData): {
   workers: number | null;
   wasteBags: number | null;
   wasteBagPrice: number | null;
+  materialsCharge: number | null;
+  materialsPaid: number | null;
+  materialsNote: string;
 } {
   const pricingType = (
     String(formData.get("pricingType") || "FIXED") === "HOURLY" ? "HOURLY" : "FIXED"
   ) as PricingType;
 
-  // Optional waste-removal add-on, layered on top of either pricing mode.
-  const wasteBags = Math.max(0, Math.round(parseAmount(formData.get("wasteBags"))));
-  const wasteBagPrice = parseAmount(formData.get("wasteBagPrice"));
-  const hasWaste = wasteBags > 0 && wasteBagPrice > 0;
-  const wasteTotal = hasWaste ? computeWasteTotal(wasteBags, wasteBagPrice) : 0;
+  const extras = readExtras(formData);
+  const addOns = extras.wasteTotal + extras.materialsChargeTotal;
 
   if (pricingType === "HOURLY") {
     const workers = Math.max(1, Math.round(parseAmount(formData.get("workers")) || 1));
@@ -44,27 +79,33 @@ function readJobPrice(formData: FormData): {
     const hours = parseAmount(formData.get("hours"));
     const basePrice = computeHourlyPrice(workers, hourlyRate, hours);
     return {
-      price: basePrice + wasteTotal,
+      price: basePrice + addOns,
       basePrice,
       pricingType,
       hourlyRate,
       hours,
       workers,
-      wasteBags: hasWaste ? wasteBags : null,
-      wasteBagPrice: hasWaste ? wasteBagPrice : null,
+      wasteBags: extras.wasteBags,
+      wasteBagPrice: extras.wasteBagPrice,
+      materialsCharge: extras.materialsCharge,
+      materialsPaid: extras.materialsPaid,
+      materialsNote: extras.materialsNote,
     };
   }
 
   const basePrice = parseAmount(formData.get("price"));
   return {
-    price: basePrice + wasteTotal,
+    price: basePrice + addOns,
     basePrice,
     pricingType: "FIXED",
     hourlyRate: null,
     hours: null,
     workers: null,
-    wasteBags: hasWaste ? wasteBags : null,
-    wasteBagPrice: hasWaste ? wasteBagPrice : null,
+    wasteBags: extras.wasteBags,
+    wasteBagPrice: extras.wasteBagPrice,
+    materialsCharge: extras.materialsCharge,
+    materialsPaid: extras.materialsPaid,
+    materialsNote: extras.materialsNote,
   };
 }
 
@@ -83,8 +124,8 @@ export async function createJobFromCalendar(formData: FormData) {
   const what = String(formData.get("title") || "").trim();
   const repeat = String(formData.get("repeat") || "NONE") as Recurrence;
   const pricing = readJobPrice(formData);
-  // Seed recurring-round defaults from the base price only — the waste add-on is a
-  // one-off, per-visit extra and shouldn't stick to the customer's usual price.
+  // Seed recurring-round defaults from the base price only — waste/materials are
+  // one-off, per-visit extras and shouldn't stick to the customer's usual price.
   const { basePrice: price } = pricing;
 
   let customerId: number | null = null;
@@ -155,6 +196,9 @@ export async function createJobFromCalendar(formData: FormData) {
       workers: pricing.workers,
       wasteBags: pricing.wasteBags,
       wasteBagPrice: pricing.wasteBagPrice,
+      materialsCharge: pricing.materialsCharge,
+      materialsPaid: pricing.materialsPaid,
+      materialsNote: pricing.materialsNote,
       crewId: crewId || undefined,
       customerId: customerId || undefined,
       recurringSourceCustomerId:
@@ -268,6 +312,7 @@ export async function markCustomerJobsPaid(formData: FormData) {
   revalidatePath(`/customers/${customerId}/invoice`);
 }
 
+/** Quick total overwrite (legacy). Prefer updateJobExtras for labour + add-ons. */
 export async function updateJobPrice(formData: FormData) {
   const id = Number(formData.get("id"));
   await prisma.scheduledJob.update({
@@ -278,6 +323,68 @@ export async function updateJobPrice(formData: FormData) {
       hourlyRate: null,
       hours: null,
       workers: null,
+      wasteBags: null,
+      wasteBagPrice: null,
+      materialsCharge: null,
+      materialsPaid: null,
+      materialsNote: "",
+    },
+  });
+  revalidatePath("/calendar");
+  revalidatePath("/");
+}
+
+/**
+ * Edit labour + waste + materials on an existing job. Total price is recomputed.
+ * Keeps hourly breakdown when the job is still hourly and labour wasn't overridden.
+ */
+export async function updateJobExtras(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (!id) return;
+
+  const job = await prisma.scheduledJob.findUnique({ where: { id } });
+  if (!job) return;
+
+  const extras = readExtras(formData);
+  const addOns = extras.wasteTotal + extras.materialsChargeTotal;
+  const labourInput = String(formData.get("labour") ?? "");
+  const labour = labourInput === "" ? null : parseAmount(labourInput);
+
+  let basePrice: number;
+  let pricingType = job.pricingType;
+  let hourlyRate = job.hourlyRate;
+  let hours = job.hours;
+  let workers = job.workers;
+
+  if (
+    labour == null &&
+    job.pricingType === "HOURLY" &&
+    job.workers != null &&
+    job.hourlyRate != null &&
+    job.hours != null
+  ) {
+    basePrice = computeHourlyPrice(job.workers, job.hourlyRate, job.hours);
+  } else {
+    basePrice = labour ?? 0;
+    pricingType = "FIXED";
+    hourlyRate = null;
+    hours = null;
+    workers = null;
+  }
+
+  await prisma.scheduledJob.update({
+    where: { id },
+    data: {
+      price: basePrice + addOns,
+      pricingType,
+      hourlyRate,
+      hours,
+      workers,
+      wasteBags: extras.wasteBags,
+      wasteBagPrice: extras.wasteBagPrice,
+      materialsCharge: extras.materialsCharge,
+      materialsPaid: extras.materialsPaid,
+      materialsNote: extras.materialsNote,
     },
   });
   revalidatePath("/calendar");

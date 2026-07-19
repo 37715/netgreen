@@ -107,6 +107,13 @@ export default async function InvoicePage({
                           · incl. waste removal ({j.wasteBags} bags)
                         </span>
                       ) : null}
+                      {j.materialsCharge ? (
+                        <span className="text-xs text-stone-400">
+                          {" "}
+                          · incl. materials
+                          {j.materialsNote ? ` (${j.materialsNote})` : ""}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="ledger py-2.5 text-right font-semibold text-stone-800">
                       {formatMoney(j.price, settings.currency)}

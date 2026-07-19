@@ -182,6 +182,12 @@ export default async function DashboardPage({
                 value={formatMoney(summary.wasteIncome, currency)}
               />
             )}
+            {summary.materialsIncome > 0 && (
+              <SubRow
+                label="incl. materials charged"
+                value={formatMoney(summary.materialsIncome, currency)}
+              />
+            )}
             <Row label="Project payments" value={formatMoney(summary.projectIncome, currency)} />
           </dl>
           <div className="mt-auto pt-4">
@@ -197,6 +203,7 @@ export default async function DashboardPage({
           <dl className="mt-4 space-y-2.5 text-sm">
             <Row label="Overheads" value={formatMoney(summary.overheadCosts, currency)} />
             <Row label="Project materials & costs" value={formatMoney(summary.projectCosts, currency)} />
+            <Row label="Job materials bought" value={formatMoney(summary.materialsPaid, currency)} />
             <Row label="Extra crew wages" value={formatMoney(summary.labourCosts, currency)} />
           </dl>
           <div className="mt-auto pt-4">
@@ -222,6 +229,38 @@ export default async function DashboardPage({
           {formatMoney(summary.profit, currency)}
         </span>
       </div>
+
+      {(summary.materialsIncome > 0 || summary.materialsPaid > 0) && (
+        <div className="mt-4 card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-base font-bold text-brand-900">
+                Materials profit
+              </h2>
+              <p className="mt-0.5 text-xs text-stone-500">
+                What you charged for materials vs what you paid · {label}
+              </p>
+            </div>
+            <span
+              className={`ledger sum text-2xl font-extrabold ${
+                summary.materialsProfit >= 0 ? "text-brand-700" : "text-clay-600"
+              }`}
+            >
+              {formatMoney(summary.materialsProfit, currency)}
+            </span>
+          </div>
+          <dl className="mt-4 space-y-2.5 text-sm">
+            <Row
+              label="Charged to customers"
+              value={formatMoney(summary.materialsIncome, currency)}
+            />
+            <Row
+              label="We paid"
+              value={formatMoney(summary.materialsPaid, currency)}
+            />
+          </dl>
+        </div>
+      )}
 
       <RevenueShareCard
         payouts={sharePayouts}

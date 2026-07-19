@@ -123,6 +123,12 @@ model ScheduledJob {
   // included in `price`.
   wasteBags     Int?
   wasteBagPrice Float?
+  // Optional materials add-on (weedkiller, compost, plants…).
+  // materialsCharge is billed to the customer and included in `price`.
+  // materialsPaid is what we spent — used for materials profit on Money.
+  materialsCharge Float?
+  materialsPaid   Float?
+  materialsNote   String @default("")
   status      JobStatus @default(SCHEDULED)
   sortOrder   Int       @default(0)
   notes       String    @default("")

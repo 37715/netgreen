@@ -8,7 +8,7 @@ import {
   moveJob,
   deleteJob,
 } from "@/app/actions/jobs";
-import { InlinePrice } from "@/components/InlinePrice";
+import { InlineJobPrice } from "@/components/InlineJobPrice";
 import { formatHourlyBreakdown } from "@/lib/money";
 import {
   CheckIcon,
@@ -30,6 +30,11 @@ export type JobRowData = {
   hourlyRate?: number | null;
   hours?: number | null;
   workers?: number | null;
+  wasteBags?: number | null;
+  wasteBagPrice?: number | null;
+  materialsCharge?: number | null;
+  materialsPaid?: number | null;
+  materialsNote?: string;
   customer: { id: number; name: string; address?: string } | null;
   recurringSourceCustomerId: number | null;
   paidAt?: Date | string | null;
@@ -239,7 +244,7 @@ export function JobRow({
         </div>
       )}
 
-      <InlinePrice id={job.id} price={job.price} />
+      <InlineJobPrice job={job} />
 
       <div className="flex shrink-0 items-center text-stone-300">
         <button

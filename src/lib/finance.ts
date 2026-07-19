@@ -5,6 +5,9 @@ import { startOfDay, endOfDay } from "@/lib/dates";
 export type RangeSummary = {
   quickIncome: number;
   wasteIncome: number;
+  materialsIncome: number;
+  materialsPaid: number;
+  materialsProfit: number;
   projectIncome: number;
   revenue: number;
   overheadCosts: number;
@@ -18,7 +21,7 @@ export type RangeSummary = {
 /**
  * Cash-basis summary for a date range:
  *  revenue = completed quick jobs + project payments received
- *  costs   = overheads + project costs incurred
+ *  costs   = overheads + project costs + extra crew + materials we paid for
  *  profit  = revenue - costs
  */
 export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummary> {
@@ -28,7 +31,13 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const [doneJobs, payments, overheads, projectCosts, labour] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { status: "DONE", date: { gte, lte } },
-      select: { price: true, wasteBags: true, wasteBagPrice: true },
+      select: {
+        price: true,
+        wasteBags: true,
+        wasteBagPrice: true,
+        materialsCharge: true,
+        materialsPaid: true,
+      },
     }),
     prisma.payment.findMany({
       where: { date: { gte, lte } },
@@ -49,22 +58,27 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   ]);
 
   const quickIncome = sum(doneJobs.map((j) => j.price));
-  // Waste removal is billed inside each job's price; track it as a subset so we can
-  // see how much of the quick-job income comes from waste, without double-counting.
+  // Waste / materials charges are billed inside each job's price; track as subsets
+  // so we can see the split without double-counting revenue.
   const wasteIncome = sum(
     doneJobs.map((j) => (j.wasteBags ?? 0) * (j.wasteBagPrice ?? 0))
   );
+  const materialsIncome = sum(doneJobs.map((j) => j.materialsCharge ?? 0));
+  const materialsPaid = sum(doneJobs.map((j) => j.materialsPaid ?? 0));
   const projectIncome = sum(payments.map((p) => p.amount));
   const overheadCosts = sum(overheads.map((o) => o.amount));
   const projectCostsTotal = sum(projectCosts.map((c) => c.amount));
   const labourCosts = sum(labour.map((l) => l.amount));
 
   const revenue = quickIncome + projectIncome;
-  const costs = overheadCosts + projectCostsTotal + labourCosts;
+  const costs = overheadCosts + projectCostsTotal + labourCosts + materialsPaid;
 
   return {
     quickIncome,
     wasteIncome,
+    materialsIncome,
+    materialsPaid,
+    materialsProfit: materialsIncome - materialsPaid,
     projectIncome,
     revenue,
     overheadCosts,
@@ -128,14 +142,16 @@ export type RevenueSharePayout = {
   lines: RevenueShareLine[];
 };
 
-/** Labour takings on a job = price minus logged waste (materials not tracked on rounds). */
+/** Labour takings on a job = price minus waste and materials charges. */
 export function jobLabourTakings(job: {
   price: number;
   wasteBags: number | null;
   wasteBagPrice: number | null;
+  materialsCharge?: number | null;
 }): number {
   const waste = (job.wasteBags ?? 0) * (job.wasteBagPrice ?? 0);
-  return Math.max(0, job.price - waste);
+  const materials = job.materialsCharge ?? 0;
+  return Math.max(0, job.price - waste - materials);
 }
 
 /**
@@ -184,6 +200,7 @@ export async function getRevenueSharePayouts(
       price: true,
       wasteBags: true,
       wasteBagPrice: true,
+      materialsCharge: true,
     },
   });
 

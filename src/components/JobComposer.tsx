@@ -46,6 +46,10 @@ export function JobComposer({
   const [wasteOn, setWasteOn] = useState(false);
   const [wasteBags, setWasteBags] = useState("");
   const [wasteBagPrice, setWasteBagPrice] = useState("");
+  const [materialsOn, setMaterialsOn] = useState(false);
+  const [materialsCharge, setMaterialsCharge] = useState("");
+  const [materialsPaid, setMaterialsPaid] = useState("");
+  const [materialsNote, setMaterialsNote] = useState("");
   const [crewId, setCrewId] = useState<string>(crews[0] ? String(crews[0].id) : "");
   const [repeat, setRepeat] = useState("NONE");
 
@@ -67,8 +71,18 @@ export function JobComposer({
     return computeWasteTotal(parseFloat(wasteBags) || 0, parseFloat(wasteBagPrice) || 0);
   }, [wasteOn, wasteBags, wasteBagPrice]);
 
+  const materialsChargeTotal = useMemo(() => {
+    if (!materialsOn) return 0;
+    return Math.max(0, parseFloat(materialsCharge) || 0);
+  }, [materialsOn, materialsCharge]);
+
+  const materialsPaidTotal = useMemo(() => {
+    if (!materialsOn) return 0;
+    return Math.max(0, parseFloat(materialsPaid) || 0);
+  }, [materialsOn, materialsPaid]);
+
   const basePrice = pricingMode === "HOURLY" ? hourlyTotal : parseFloat(price) || 0;
-  const grandTotal = basePrice + wasteTotal;
+  const grandTotal = basePrice + wasteTotal + materialsChargeTotal;
 
   function resetForm() {
     setCustomerName("");
@@ -81,6 +95,10 @@ export function JobComposer({
     setWasteOn(false);
     setWasteBags("");
     setWasteBagPrice("");
+    setMaterialsOn(false);
+    setMaterialsCharge("");
+    setMaterialsPaid("");
+    setMaterialsNote("");
     setRepeat("NONE");
     setPricingMode("FIXED");
   }
@@ -254,76 +272,149 @@ export function JobComposer({
           </div>
         )}
 
-        <div className="mt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label mb-0">Waste removal</span>
-            <button
-              type="button"
-              onClick={() => setWasteOn((v) => !v)}
-              className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors ${
-                wasteOn
-                  ? "border-lime-500 bg-lime-100 text-lime-600"
-                  : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
-              }`}
-            >
-              {wasteOn ? "Added" : "Add waste removal"}
-            </button>
+        <div className="mt-4 space-y-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="label mb-0">Waste removal</span>
+              <button
+                type="button"
+                onClick={() => setWasteOn((v) => !v)}
+                className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors ${
+                  wasteOn
+                    ? "border-lime-500 bg-lime-100 text-lime-600"
+                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {wasteOn ? "Added" : "Add waste removal"}
+              </button>
+            </div>
+
+            {wasteOn && (
+              <div className="mt-3 grid max-w-[420px] gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label">Bags</label>
+                  <input
+                    name="wasteBags"
+                    type="number"
+                    step="1"
+                    min="0"
+                    inputMode="numeric"
+                    value={wasteBags}
+                    onChange={(e) => setWasteBags(e.target.value)}
+                    placeholder="e.g. 3"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">£ per bag</label>
+                  <input
+                    name="wasteBagPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={wasteBagPrice}
+                    onChange={(e) => setWasteBagPrice(e.target.value)}
+                    placeholder="e.g. 5"
+                    className="input"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {wasteOn && (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 max-w-[420px]">
-              <div>
-                <label className="label">Bags</label>
-                <input
-                  name="wasteBags"
-                  type="number"
-                  step="1"
-                  min="0"
-                  inputMode="numeric"
-                  value={wasteBags}
-                  onChange={(e) => setWasteBags(e.target.value)}
-                  placeholder="e.g. 3"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">£ per bag</label>
-                <input
-                  name="wasteBagPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  inputMode="decimal"
-                  value={wasteBagPrice}
-                  onChange={(e) => setWasteBagPrice(e.target.value)}
-                  placeholder="e.g. 5"
-                  className="input"
-                />
-              </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="label mb-0">Materials</span>
+              <button
+                type="button"
+                onClick={() => setMaterialsOn((v) => !v)}
+                className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors ${
+                  materialsOn
+                    ? "border-lime-500 bg-lime-100 text-lime-600"
+                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {materialsOn ? "Added" : "Add materials"}
+              </button>
             </div>
-          )}
+
+            {materialsOn && (
+              <div className="mt-3 grid max-w-[520px] gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="label">Charge customer £</label>
+                  <input
+                    name="materialsCharge"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={materialsCharge}
+                    onChange={(e) => setMaterialsCharge(e.target.value)}
+                    placeholder="e.g. 20"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">We paid £</label>
+                  <input
+                    name="materialsPaid"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={materialsPaid}
+                    onChange={(e) => setMaterialsPaid(e.target.value)}
+                    placeholder="e.g. 12"
+                    className="input"
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="label">What for?</label>
+                  <input
+                    name="materialsNote"
+                    value={materialsNote}
+                    onChange={(e) => setMaterialsNote(e.target.value)}
+                    placeholder="Weedkiller, compost…"
+                    className="input"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {(pricingMode === "HOURLY" || wasteTotal > 0) && (
+        {(pricingMode === "HOURLY" ||
+          wasteTotal > 0 ||
+          materialsChargeTotal > 0 ||
+          materialsPaidTotal > 0) && (
           <div className="mt-3 rounded-xl bg-stone-50 px-3 py-2.5">
             <div className="flex items-baseline gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                Total
+                Total charged
               </span>
               <span className="ledger text-lg font-extrabold text-brand-800">
                 {formatMoney(grandTotal)}
               </span>
             </div>
-            {wasteTotal > 0 && (
+            {(wasteTotal > 0 || materialsChargeTotal > 0 || materialsPaidTotal > 0) && (
               <p className="mt-1 text-xs text-stone-400">
                 {pricingMode === "HOURLY"
                   ? `${workers} × £${hourlyRate || "0"} × ${hours || "0"}h`
-                  : `${formatMoney(basePrice)} job`}
-                {" + "}
-                {wasteBags || "0"} bags × £{wasteBagPrice || "0"} waste
+                  : `${formatMoney(basePrice)} labour`}
+                {wasteTotal > 0 &&
+                  ` + ${wasteBags || "0"} bags × £${wasteBagPrice || "0"} waste`}
+                {materialsChargeTotal > 0 &&
+                  ` + ${formatMoney(materialsChargeTotal)} materials charged`}
+                {materialsPaidTotal > 0 &&
+                  ` · we paid ${formatMoney(materialsPaidTotal)}`}
+                {materialsNote ? ` (${materialsNote})` : ""}
               </p>
             )}
-            {wasteTotal <= 0 && pricingMode === "HOURLY" && (
+            {wasteTotal <= 0 &&
+              materialsChargeTotal <= 0 &&
+              materialsPaidTotal <= 0 &&
+              pricingMode === "HOURLY" && (
               <p className="mt-1 text-xs text-stone-400">
                 {workers} × £{hourlyRate || "0"} × {hours || "0"}h
               </p>

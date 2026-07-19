@@ -148,6 +148,9 @@ model ScheduledJob {
 
   @@index([date])
   @@index([recurringSourceCustomerId, date])
+  // One auto-generated occurrence per customer per stored day (UTC noon).
+  // Prevents racey calendar loads from creating dozens of copies.
+  @@unique([recurringSourceCustomerId, date])
 }
 
 enum ProjectStatus {

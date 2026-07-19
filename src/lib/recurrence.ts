@@ -143,8 +143,13 @@ export async function materializeRecurring(from: Date, to: Date): Promise<number
   }
 
   if (toCreate.length === 0) return 0;
-  await prisma.scheduledJob.createMany({ data: toCreate });
-  return toCreate.length;
+  // skipDuplicates relies on @@unique([recurringSourceCustomerId, date]) so
+  // concurrent calendar loads cannot create a pile of the same occurrence.
+  const result = await prisma.scheduledJob.createMany({
+    data: toCreate,
+    skipDuplicates: true,
+  });
+  return result.count;
 }
 
 /** Convenience guard used in UI to avoid duplicate scheduling on the same day. */

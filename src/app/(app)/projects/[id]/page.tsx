@@ -201,7 +201,11 @@ export default async function ProjectDetailPage({
                 </div>
                 <div>
                   <label className="label">Method</label>
-                  <input name="method" className="input" placeholder="Bank transfer, cash..." />
+                  <select name="method" defaultValue="Bank transfer" className="input">
+                    <option value="Bank transfer">Bank transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
                 <div>
                   <label className="label">Note</label>

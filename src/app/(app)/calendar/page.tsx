@@ -163,6 +163,16 @@ async function DayView({
   const costsToday = wages + materialsPaid;
   const profit = takings - costsToday;
 
+  const cashToday = doneJobs
+    .filter((j) => j.paidAt && j.paymentMethod === "CASH")
+    .reduce((s, j) => s + j.price, 0);
+  const bankToday = doneJobs
+    .filter((j) => j.paidAt && j.paymentMethod === "BANK")
+    .reduce((s, j) => s + j.price, 0);
+  const dueToday = doneJobs
+    .filter((j) => !j.paidAt)
+    .reduce((s, j) => s + j.price, 0);
+
   const groups: GroupInfo[] = [
     ...crews,
     ...(jobs.some((j) => j.crewId == null)
@@ -234,6 +244,30 @@ async function DayView({
           sum
         />
       </div>
+
+      {takings > 0 && (
+        <div className="card flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+          <span className="eyebrow">Cashing up</span>
+          <CashUpItem
+            label="Cash"
+            value={formatMoney(cashToday, currency)}
+            dotClass="bg-lime-500"
+          />
+          <CashUpItem
+            label="Bank"
+            value={formatMoney(bankToday, currency)}
+            dotClass="bg-brand-700"
+          />
+          {dueToday > 0 && (
+            <CashUpItem
+              label="To collect"
+              value={formatMoney(dueToday, currency)}
+              dotClass="bg-clay-500"
+              alert
+            />
+          )}
+        </div>
+      )}
 
       <DayBoard
         date={dateStr}
@@ -334,6 +368,32 @@ async function WeekView({ selected }: { selected: Date }) {
 
       <WeekGrid days={days} crews={weekCrews} currency={currency} />
     </div>
+  );
+}
+
+function CashUpItem({
+  label,
+  value,
+  dotClass,
+  alert,
+}: {
+  label: string;
+  value: string;
+  dotClass: string;
+  alert?: boolean;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+      <span className="text-xs font-semibold text-stone-600">{label}</span>
+      <span
+        className={`ledger text-sm font-extrabold ${
+          alert ? "text-clay-600" : "text-stone-900"
+        }`}
+      >
+        {value}
+      </span>
+    </span>
   );
 }
 

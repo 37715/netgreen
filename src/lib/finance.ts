@@ -98,6 +98,110 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   };
 }
 
+export type PaymentSplit = {
+  /** Job takings by how the money arrived. */
+  jobCash: number;
+  jobCashCount: number;
+  jobBank: number;
+  jobBankCount: number;
+  /** Done jobs with nothing collected yet. */
+  jobDue: number;
+  jobDueCount: number;
+  /** Project payments, bucketed from their free-text method. */
+  projectCash: number;
+  projectBank: number;
+  projectOther: number;
+  /** Totals across jobs and projects. */
+  cash: number;
+  bank: number;
+  other: number;
+  collected: number;
+};
+
+/** Bucket a free-text payment method (project payments) into cash or bank. */
+export function bucketPaymentMethod(
+  method: string
+): "CASH" | "BANK" | "OTHER" {
+  const m = method.trim().toLowerCase();
+  if (!m) return "OTHER";
+  if (m.includes("cash")) return "CASH";
+  if (m.includes("bank") || m.includes("transfer") || m.includes("bacs"))
+    return "BANK";
+  return "OTHER";
+}
+
+/**
+ * Cash vs bank record for a date range — the split you need for tax returns.
+ * Jobs count on the day they were done; project payments on the payment date.
+ */
+export async function getPaymentSplit(
+  from: Date,
+  to: Date
+): Promise<PaymentSplit> {
+  const gte = startOfDay(from);
+  const lte = endOfDay(to);
+
+  const [jobs, payments] = await Promise.all([
+    prisma.scheduledJob.findMany({
+      where: { status: "DONE", date: { gte, lte } },
+      select: { price: true, paidAt: true, paymentMethod: true },
+    }),
+    prisma.payment.findMany({
+      where: { date: { gte, lte } },
+      select: { amount: true, method: true },
+    }),
+  ]);
+
+  let jobCash = 0;
+  let jobCashCount = 0;
+  let jobBank = 0;
+  let jobBankCount = 0;
+  let jobDue = 0;
+  let jobDueCount = 0;
+
+  for (const j of jobs) {
+    if (j.paidAt && j.paymentMethod === "CASH") {
+      jobCash += j.price;
+      jobCashCount += 1;
+    } else if (j.paidAt && j.paymentMethod === "BANK") {
+      jobBank += j.price;
+      jobBankCount += 1;
+    } else if (j.price > 0) {
+      jobDue += j.price;
+      jobDueCount += 1;
+    }
+  }
+
+  let projectCash = 0;
+  let projectBank = 0;
+  let projectOther = 0;
+  for (const p of payments) {
+    const bucket = bucketPaymentMethod(p.method);
+    if (bucket === "CASH") projectCash += p.amount;
+    else if (bucket === "BANK") projectBank += p.amount;
+    else projectOther += p.amount;
+  }
+
+  const cash = jobCash + projectCash;
+  const bank = jobBank + projectBank;
+
+  return {
+    jobCash,
+    jobCashCount,
+    jobBank,
+    jobBankCount,
+    jobDue,
+    jobDueCount,
+    projectCash,
+    projectBank,
+    projectOther,
+    cash,
+    bank,
+    other: projectOther,
+    collected: cash + bank + projectOther,
+  };
+}
+
 export type ProjectTotals = {
   paid: number;
   costs: number;

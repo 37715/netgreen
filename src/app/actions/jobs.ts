@@ -256,6 +256,28 @@ export async function setJobStatus(formData: FormData) {
 }
 
 /**
+ * Tick a job off and record how it was paid in one step.
+ * method: "CASH" | "BANK" | "UNPAID" (done but still to collect).
+ */
+export async function completeJob(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  const method = String(formData.get("method") || "UNPAID");
+  const paid = method === "CASH" || method === "BANK";
+  await prisma.scheduledJob.update({
+    where: { id },
+    data: {
+      status: "DONE",
+      completedAt: new Date(),
+      paidAt: paid ? new Date() : null,
+      paymentMethod: paid ? (method as "CASH" | "BANK") : null,
+    },
+  });
+  revalidatePath("/calendar");
+  revalidatePath("/");
+}
+
+/**
  * Rain day off: mark every not-yet-done job on this day as skipped.
  * Jobs stay on the date (nothing is moved). Existing rows still block
  * recurring materialization, so the day stays closed.

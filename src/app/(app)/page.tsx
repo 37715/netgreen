@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import {
   getRangeSummary,
+  getPaymentSplit,
   getRevenueShareWeeks,
   projectTotals,
 } from "@/lib/finance";
@@ -17,6 +18,7 @@ import {
 import { MarginBadge } from "@/components/ui";
 import { StillOwed, type OwedItem } from "@/components/StillOwed";
 import { RevenueShareCard } from "@/components/RevenueShareCard";
+import { TakingsSplit } from "@/components/TakingsSplit";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +54,9 @@ export default async function DashboardPage({
   const settings = await getSettings();
   const currency = settings.currency;
 
-  const [summary, projects, debts, shareDeals] = await Promise.all([
+  const [summary, split, projects, debts, shareDeals] = await Promise.all([
     getRangeSummary(from, to),
+    getPaymentSplit(from, to),
     prisma.project.findMany({
       include: { costs: true, payments: true, customer: true },
       orderBy: { createdAt: "desc" },
@@ -230,6 +233,8 @@ export default async function DashboardPage({
           {formatMoney(summary.profit, currency)}
         </span>
       </div>
+
+      <TakingsSplit split={split} currency={currency} rangeLabel={label} />
 
       {(summary.materialsIncome > 0 || summary.materialsPaid > 0) && (
         <div className="mt-4 card p-5">

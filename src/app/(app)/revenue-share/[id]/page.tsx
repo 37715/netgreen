@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
+import { getSettings } from "@/lib/settings";
+import { getRevenueShareWeeks } from "@/lib/finance";
+import { formatMoney } from "@/lib/money";
+import {
+  RevenueShareWeekList,
+  RevenueShareWeekRowItem,
+} from "@/components/RevenueShareWeeks";
 import {
   updateRevenueShare,
   setRevenueShareActive,
@@ -30,7 +37,9 @@ export default async function RevenueShareDetailPage({
   });
   if (!share) notFound();
 
-  const [customers, orphanCount] = await Promise.all([
+  const [settings, weekly, customers, orphanCount] = await Promise.all([
+    getSettings(),
+    getRevenueShareWeeks({ weeksBack: 26, shareId: id }).then((d) => d[0]),
     prisma.customer.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -62,6 +71,55 @@ export default async function RevenueShareDetailPage({
       {sp.saved === "1" && (
         <div className="mb-4 rounded-2xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-800">
           Saved — {sp.count ?? "0"} customers on this revenue share.
+        </div>
+      )}
+
+      {weekly && (
+        <div className="card mb-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-base font-bold text-brand-900">
+                Weekly payouts
+              </h2>
+              <p className="mt-0.5 text-xs text-stone-500">
+                {weekly.percent}% of labour takings, Monday to Sunday. Marking a
+                week sent locks that figure.
+              </p>
+            </div>
+            {weekly.weeksSent > 0 && (
+              <div className="text-right">
+                <div className="ledger sum text-xl font-extrabold text-stone-900">
+                  {formatMoney(weekly.totalSent, settings.currency)}
+                </div>
+                <div className="text-[11px] text-stone-400">
+                  sent across {weekly.weeksSent}{" "}
+                  {weekly.weeksSent === 1 ? "week" : "weeks"}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <span className="eyebrow">This week</span>
+            <ul>
+              <RevenueShareWeekRowItem
+                shareId={weekly.id}
+                row={weekly.current}
+                currency={settings.currency}
+              />
+            </ul>
+          </div>
+
+          <div className="mt-3 border-t border-stone-100 pt-3">
+            <RevenueShareWeekList
+              shareId={weekly.id}
+              rows={weekly.history}
+              currency={settings.currency}
+              totalSent={weekly.totalSent}
+              weeksSent={weekly.weeksSent}
+              showTotals={false}
+            />
+          </div>
         </div>
       )}
 

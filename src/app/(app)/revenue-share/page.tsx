@@ -9,14 +9,14 @@ export const dynamic = "force-dynamic";
 export default async function RevenueShareListPage() {
   const shares = await prisma.revenueShare.findMany({
     orderBy: [{ active: "desc" }, { name: "asc" }],
-    include: { _count: { select: { customers: true } } },
+    include: { _count: { select: { customers: true, weeks: true } } },
   });
 
   return (
     <div>
       <PageHeader
         title="Revenue share"
-        subtitle="Pay someone a percentage of labour takings from a tagged set of customers — e.g. a seller earn-out on an acquired book."
+        subtitle="Pay someone a percentage of labour takings from a tagged set of customers — e.g. a seller earn-out on an acquired book. Worked out fresh every calendar week, Monday to Sunday."
       />
 
       <div className="mb-4">
@@ -86,8 +86,12 @@ export default async function RevenueShareListPage() {
                     )}
                   </div>
                   <div className="text-xs text-stone-400">
-                    {s.percent}% · {s._count.customers}{" "}
+                    {s.percent}% weekly · {s._count.customers}{" "}
                     {s._count.customers === 1 ? "customer" : "customers"}
+                    {s._count.weeks > 0 &&
+                      ` · ${s._count.weeks} ${
+                        s._count.weeks === 1 ? "week" : "weeks"
+                      } sent`}
                   </div>
                 </div>
                 <span className="text-xs font-semibold text-brand-700">Open</span>

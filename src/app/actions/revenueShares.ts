@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { parseAmount } from "@/lib/money";
+import { computeRevenueShareWeek } from "@/lib/finance";
+import { fromDateInput, startOfWeek, toStoredDay } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -87,4 +89,54 @@ export async function setRevenueShareCustomers(formData: FormData) {
   });
   revalidateSharePaths(id);
   redirect(`/revenue-share/${id}?saved=1&count=${selected.length}`);
+}
+
+/** Parse a Monday key (YYYY-MM-DD) from a form into a stored calendar day. */
+function readWeekStart(formData: FormData): Date | null {
+  const key = String(formData.get("weekStart") || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  return toStoredDay(startOfWeek(fromDateInput(key)));
+}
+
+/**
+ * Settle one calendar week: recompute the figure server-side and snapshot it,
+ * so later edits to those jobs can't change what was already paid.
+ */
+export async function markRevenueShareWeekSent(formData: FormData) {
+  const shareId = Number(formData.get("id"));
+  const weekStart = readWeekStart(formData);
+  if (!shareId || !weekStart) return;
+
+  const totals = await computeRevenueShareWeek(shareId, weekStart);
+  if (!totals) return;
+
+  await prisma.revenueShareWeek.upsert({
+    where: { shareId_weekStart: { shareId, weekStart } },
+    create: {
+      shareId,
+      weekStart,
+      amount: totals.amount,
+      labourTakings: totals.labourTakings,
+      jobs: totals.jobs,
+      sentAt: new Date(),
+    },
+    update: {
+      amount: totals.amount,
+      labourTakings: totals.labourTakings,
+      jobs: totals.jobs,
+      sentAt: new Date(),
+    },
+  });
+  revalidateSharePaths(shareId);
+}
+
+/** Undo a settled week — puts it back to a live figure. */
+export async function unmarkRevenueShareWeekSent(formData: FormData) {
+  const shareId = Number(formData.get("id"));
+  const weekStart = readWeekStart(formData);
+  if (!shareId || !weekStart) return;
+  await prisma.revenueShareWeek
+    .delete({ where: { shareId_weekStart: { shareId, weekStart } } })
+    .catch(() => null);
+  revalidateSharePaths(shareId);
 }

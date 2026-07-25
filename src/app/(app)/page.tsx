@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import {
   getRangeSummary,
-  getRevenueSharePayouts,
+  getRevenueShareWeeks,
   projectTotals,
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
@@ -52,7 +52,7 @@ export default async function DashboardPage({
   const settings = await getSettings();
   const currency = settings.currency;
 
-  const [summary, projects, debts, sharePayouts] = await Promise.all([
+  const [summary, projects, debts, shareDeals] = await Promise.all([
     getRangeSummary(from, to),
     prisma.project.findMany({
       include: { costs: true, payments: true, customer: true },
@@ -62,7 +62,8 @@ export default async function DashboardPage({
       where: { paidAt: null },
       orderBy: { createdAt: "desc" },
     }),
-    getRevenueSharePayouts(from, to),
+    // Revenue share always runs on calendar weeks, not the range picker above.
+    getRevenueShareWeeks({ weeksBack: 8 }),
   ]);
 
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
@@ -262,11 +263,7 @@ export default async function DashboardPage({
         </div>
       )}
 
-      <RevenueShareCard
-        payouts={sharePayouts}
-        currency={currency}
-        rangeLabel={label}
-      />
+      <RevenueShareCard deals={shareDeals} currency={currency} />
 
       {/* Project insights */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

@@ -248,13 +248,33 @@ model Debt {
 }
 
 // % of labour takings from a tagged customer book (e.g. seller earn-out).
-// Weekly/period amount = sum(done job price − waste) × percent / 100.
+// Runs on calendar weeks (Mon–Sun): amount = sum(done job price − waste −
+// materials charged) × percent / 100, reset every Monday.
 model RevenueShare {
-  id        Int        @id @default(autoincrement())
+  id        Int                    @id @default(autoincrement())
   name      String
   percent   Float
-  active    Boolean    @default(true)
-  notes     String     @default("")
+  active    Boolean                @default(true)
+  notes     String                 @default("")
   customers Customer[]
-  createdAt DateTime   @default(now())
+  weeks     RevenueShareWeek[]
+  createdAt DateTime               @default(now())
+}
+
+// A settled week: the figure is snapshotted when it's sent so later edits to
+// old jobs can't change what was already paid out.
+model RevenueShareWeek {
+  id             Int          @id @default(autoincrement())
+  share          RevenueShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  shareId        Int
+  // Monday of the week, stored as UTC noon like every other calendar day.
+  weekStart      DateTime
+  amount         Float        @default(0)
+  labourTakings  Float        @default(0)
+  jobs           Int          @default(0)
+  sentAt         DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+
+  @@unique([shareId, weekStart])
+  @@index([weekStart])
 }

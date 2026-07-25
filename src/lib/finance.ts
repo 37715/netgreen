@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/db";
 import { marginPercent } from "@/lib/money";
-import { startOfDay, endOfDay } from "@/lib/dates";
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  addDays,
+  toDateInput,
+  toStoredDay,
+  formatWeekRange,
+} from "@/lib/dates";
 
 export type RangeSummary = {
   quickIncome: number;
@@ -131,15 +139,34 @@ export type RevenueShareLine = {
   shareOwed: number;
 };
 
-export type RevenueSharePayout = {
+/** One calendar week (Mon–Sun) of a revenue-share deal. */
+export type RevenueShareWeekRow = {
+  /** Monday of the week, YYYY-MM-DD. */
+  weekKey: string;
+  /** "20 – 26 Jul" */
+  label: string;
+  jobs: number;
+  labourTakings: number;
+  /** Live figure from current job data. */
+  shareOwed: number;
+  /** Snapshotted figure, set when the week was marked as sent. */
+  sentAmount: number | null;
+  sentAt: Date | null;
+};
+
+export type RevenueShareDealWeeks = {
   id: number;
   name: string;
   percent: number;
+  notes: string;
   customerCount: number;
-  jobs: number;
-  labourTakings: number;
-  shareOwed: number;
-  lines: RevenueShareLine[];
+  /** The week we're in now — resets every Monday. */
+  current: RevenueShareWeekRow & { lines: RevenueShareLine[] };
+  /** Earlier weeks, newest first. Empty weeks that were never sent are skipped. */
+  history: RevenueShareWeekRow[];
+  /** Everything marked as sent, all time. */
+  totalSent: number;
+  weeksSent: number;
 };
 
 /** Labour takings on a job = price minus waste and materials charges. */
@@ -154,49 +181,170 @@ export function jobLabourTakings(job: {
   return Math.max(0, job.price - waste - materials);
 }
 
+/** Round to whole pence so stored figures match what was displayed. */
+function toPence(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
 /**
- * For each active revenue-share deal, sum labour takings from DONE calendar
- * jobs for tagged customers in [from, to], then apply the deal percent.
+ * Revenue-share deals broken down by calendar week (Mon–Sun): the week in
+ * progress plus the previous `weeksBack` weeks. Each week's figure is the
+ * labour takings of DONE jobs for that deal's tagged customers × the percent.
+ * Weeks already marked as sent keep their snapshotted amount.
  */
-export async function getRevenueSharePayouts(
-  from: Date,
-  to: Date
-): Promise<RevenueSharePayout[]> {
-  const gte = startOfDay(from);
-  const lte = endOfDay(to);
+export async function getRevenueShareWeeks({
+  weeksBack = 8,
+  shareId,
+  now = new Date(),
+}: {
+  weeksBack?: number;
+  shareId?: number;
+  now?: Date;
+} = {}): Promise<RevenueShareDealWeeks[]> {
+  const currentWeekStart = startOfWeek(now);
+  const firstWeekStart = addDays(currentWeekStart, -7 * weeksBack);
 
   const deals = await prisma.revenueShare.findMany({
-    where: { active: true },
+    where: shareId != null ? { id: shareId } : { active: true },
     orderBy: { name: "asc" },
     include: {
       customers: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      weeks: true,
     },
   });
-
   if (deals.length === 0) return [];
 
-  const customerIds = deals.flatMap((d) => d.customers.map((c) => c.id));
-  if (customerIds.length === 0) {
-    return deals.map((d) => ({
-      id: d.id,
-      name: d.name,
-      percent: d.percent,
-      customerCount: 0,
-      jobs: 0,
-      labourTakings: 0,
-      shareOwed: 0,
-      lines: [],
-    }));
+  const customerIds = [
+    ...new Set(deals.flatMap((d) => d.customers.map((c) => c.id))),
+  ];
+
+  const jobs =
+    customerIds.length > 0
+      ? await prisma.scheduledJob.findMany({
+          where: {
+            status: "DONE",
+            customerId: { in: customerIds },
+            date: {
+              gte: startOfDay(firstWeekStart),
+              lte: endOfDay(addDays(currentWeekStart, 6)),
+            },
+          },
+          select: {
+            customerId: true,
+            date: true,
+            price: true,
+            wasteBags: true,
+            wasteBagPrice: true,
+            materialsCharge: true,
+          },
+        })
+      : [];
+
+  // weekKey -> customerId -> tally
+  const byWeek = new Map<
+    string,
+    Map<number, { jobs: number; labourTakings: number }>
+  >();
+  for (const j of jobs) {
+    if (j.customerId == null) continue;
+    const weekKey = toDateInput(startOfWeek(j.date));
+    const week = byWeek.get(weekKey) ?? new Map();
+    const cur = week.get(j.customerId) ?? { jobs: 0, labourTakings: 0 };
+    cur.jobs += 1;
+    cur.labourTakings += jobLabourTakings(j);
+    week.set(j.customerId, cur);
+    byWeek.set(weekKey, week);
   }
 
+  const weekStarts = Array.from({ length: weeksBack + 1 }, (_, i) =>
+    addDays(currentWeekStart, -7 * i)
+  );
+
+  return deals.map((deal) => {
+    const ids = new Set(deal.customers.map((c) => c.id));
+    const nameById = new Map(deal.customers.map((c) => [c.id, c.name]));
+    const sentByWeek = new Map(
+      deal.weeks.map((w) => [toDateInput(w.weekStart), w])
+    );
+
+    const build = (weekStart: Date) => {
+      const weekKey = toDateInput(weekStart);
+      const tallies = byWeek.get(weekKey);
+      const lines: RevenueShareLine[] = [];
+      if (tallies) {
+        for (const [customerId, v] of tallies) {
+          if (!ids.has(customerId)) continue;
+          lines.push({
+            customerId,
+            customerName: nameById.get(customerId) ?? "Customer",
+            jobs: v.jobs,
+            labourTakings: v.labourTakings,
+            shareOwed: toPence((v.labourTakings * deal.percent) / 100),
+          });
+        }
+        lines.sort((a, b) => b.shareOwed - a.shareOwed);
+      }
+      const labourTakings = sum(lines.map((l) => l.labourTakings));
+      const sent = sentByWeek.get(weekKey);
+      return {
+        row: {
+          weekKey,
+          label: formatWeekRange(weekStart, addDays(weekStart, 6)),
+          jobs: sum(lines.map((l) => l.jobs)),
+          labourTakings,
+          shareOwed: toPence((labourTakings * deal.percent) / 100),
+          sentAmount: sent ? sent.amount : null,
+          sentAt: sent ? sent.sentAt : null,
+        } satisfies RevenueShareWeekRow,
+        lines,
+      };
+    };
+
+    const current = build(weekStarts[0]);
+    const history = weekStarts
+      .slice(1)
+      .map((w) => build(w).row)
+      .filter((r) => r.jobs > 0 || r.sentAmount != null);
+
+    return {
+      id: deal.id,
+      name: deal.name,
+      percent: deal.percent,
+      notes: deal.notes,
+      customerCount: deal.customers.length,
+      current: { ...current.row, lines: current.lines },
+      history,
+      totalSent: sum(deal.weeks.map((w) => w.amount)),
+      weeksSent: deal.weeks.length,
+    };
+  });
+}
+
+/**
+ * Recompute one deal's figure for one calendar week. Used when settling a week
+ * so the stored amount always comes from the server, not the form.
+ */
+export async function computeRevenueShareWeek(
+  shareId: number,
+  weekStart: Date
+): Promise<{ jobs: number; labourTakings: number; amount: number } | null> {
+  const deal = await prisma.revenueShare.findUnique({
+    where: { id: shareId },
+    include: { customers: { select: { id: true } } },
+  });
+  if (!deal) return null;
+
+  const ids = deal.customers.map((c) => c.id);
+  if (ids.length === 0) return { jobs: 0, labourTakings: 0, amount: 0 };
+
+  const monday = toStoredDay(startOfWeek(weekStart));
   const jobs = await prisma.scheduledJob.findMany({
     where: {
       status: "DONE",
-      date: { gte, lte },
-      customerId: { in: customerIds },
+      customerId: { in: ids },
+      date: { gte: startOfDay(monday), lte: endOfDay(addDays(monday, 6)) },
     },
     select: {
-      customerId: true,
       price: true,
       wasteBags: true,
       wasteBagPrice: true,
@@ -204,43 +352,10 @@ export async function getRevenueSharePayouts(
     },
   });
 
-  return deals.map((deal) => {
-    const ids = new Set(deal.customers.map((c) => c.id));
-    const nameById = new Map(deal.customers.map((c) => [c.id, c.name]));
-    const byCustomer = new Map<
-      number,
-      { jobs: number; labourTakings: number }
-    >();
-
-    for (const j of jobs) {
-      if (j.customerId == null || !ids.has(j.customerId)) continue;
-      const labour = jobLabourTakings(j);
-      const cur = byCustomer.get(j.customerId) ?? { jobs: 0, labourTakings: 0 };
-      cur.jobs += 1;
-      cur.labourTakings += labour;
-      byCustomer.set(j.customerId, cur);
-    }
-
-    const lines: RevenueShareLine[] = [...byCustomer.entries()]
-      .map(([customerId, v]) => ({
-        customerId,
-        customerName: nameById.get(customerId) ?? "Customer",
-        jobs: v.jobs,
-        labourTakings: v.labourTakings,
-        shareOwed: (v.labourTakings * deal.percent) / 100,
-      }))
-      .sort((a, b) => b.shareOwed - a.shareOwed);
-
-    const labourTakings = sum(lines.map((l) => l.labourTakings));
-    return {
-      id: deal.id,
-      name: deal.name,
-      percent: deal.percent,
-      customerCount: deal.customers.length,
-      jobs: sum(lines.map((l) => l.jobs)),
-      labourTakings,
-      shareOwed: (labourTakings * deal.percent) / 100,
-      lines,
-    };
-  });
+  const labourTakings = sum(jobs.map((j) => jobLabourTakings(j)));
+  return {
+    jobs: jobs.length,
+    labourTakings,
+    amount: toPence((labourTakings * deal.percent) / 100),
+  };
 }

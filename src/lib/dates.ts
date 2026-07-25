@@ -110,3 +110,28 @@ export function formatDayShort(d: Date): string {
 export function formatRange(from: Date, to: Date): string {
   return `${formatDayLabel(from)} – ${formatDayLabel(to)}`;
 }
+
+/** "Mon" — weekday only, for calendar column heads. */
+export function formatWeekdayShort(d: Date): string {
+  const { y, m, d: day } = partsFromKey(calendarDayKey(d));
+  const midday = new Date(Date.UTC(y, m - 1, day, 12, 0, 0, 0));
+  return WEEKDAYS[midday.getUTCDay()];
+}
+
+/** "22" — day of the month. */
+export function formatDayNumber(d: Date): string {
+  return String(partsFromKey(calendarDayKey(d)).d);
+}
+
+/** "Jul" — month only. */
+export function formatMonthShort(d: Date): string {
+  return MONTHS[partsFromKey(calendarDayKey(d)).m - 1];
+}
+
+/** "20 – 26 Jul" (adds both months when the week straddles two). */
+export function formatWeekRange(from: Date, to: Date): string {
+  const a = partsFromKey(calendarDayKey(from));
+  const b = partsFromKey(calendarDayKey(to));
+  const left = a.m === b.m ? `${a.d}` : `${a.d} ${MONTHS[a.m - 1]}`;
+  return `${left} – ${b.d} ${MONTHS[b.m - 1]}`;
+}

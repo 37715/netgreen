@@ -11,9 +11,13 @@ import {
   fromDateInput,
   isSameDay,
   formatDayLabel,
-  formatDayShort,
+  formatWeekdayShort,
+  formatDayNumber,
+  formatMonthShort,
+  formatWeekRange,
 } from "@/lib/dates";
 import { JobRowData } from "@/components/JobRow";
+import { WeekGrid, WeekDay, WeekCrew } from "@/components/WeekGrid";
 import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
 import { DayCrewBar } from "@/components/DayCrewBar";
@@ -33,19 +37,19 @@ export default async function CalendarPage({
   const selected = sp.date ? fromDateInput(sp.date) : startOfDay(new Date());
   const view = sp.view === "week" ? "week" : "day";
 
-  const [crews, customers] = await Promise.all([
-    prisma.crew.findMany({
-      where: { active: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-    prisma.customer.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { name: true, address: true, defaultPrice: true, defaultCrewId: true },
-    }),
-  ]);
-
-  // Week view still uses global crews for job badges on days without explicit plans.
+  const customers =
+    view === "day"
+      ? await prisma.customer.findMany({
+          where: { active: true },
+          orderBy: { name: "asc" },
+          select: {
+            name: true,
+            address: true,
+            defaultPrice: true,
+            defaultCrewId: true,
+          },
+        })
+      : [];
 
   return (
     <div>
@@ -53,7 +57,7 @@ export default async function CalendarPage({
       {view === "day" ? (
         <DayView selected={selected} customers={customers} />
       ) : (
-        <WeekView selected={selected} crews={crews} />
+        <WeekView selected={selected} />
       )}
     </div>
   );
@@ -65,10 +69,13 @@ function CalendarHeader({ selected, view }: { selected: Date; view: string }) {
   const next = toDateInput(addDays(selected, step));
   const today = toDateInput(new Date());
   const isToday = isSameDay(selected, new Date());
-  const eyebrow = view === "week" ? "Week of" : isToday ? "Today" : "Day";
+  const weekStart = startOfWeek(selected);
+  const thisWeek = isSameDay(weekStart, startOfWeek(new Date()));
+  const eyebrow =
+    view === "week" ? (thisWeek ? "This week" : "Week") : isToday ? "Today" : "Day";
   const label =
     view === "week"
-      ? formatDayLabel(startOfWeek(selected))
+      ? formatWeekRange(weekStart, addDays(weekStart, 6))
       : formatDayLabel(selected);
 
   return (
@@ -93,9 +100,9 @@ function CalendarHeader({ selected, view }: { selected: Date; view: string }) {
           >
             <ChevronRightIcon className="h-5 w-5" />
           </Link>
-          {!isToday && (
+          {!(view === "week" ? thisWeek : isToday) && (
             <Link href={`/calendar?view=${view}&date=${today}`} className="btn-ghost ml-1">
-              Today
+              {view === "week" ? "This week" : "Today"}
             </Link>
           )}
         </div>
@@ -245,80 +252,87 @@ async function DayView({
   );
 }
 
-async function WeekView({
-  selected,
-  crews,
-}: {
-  selected: Date;
-  crews: { id: number; name: string; colour: string }[];
-}) {
+async function WeekView({ selected }: { selected: Date }) {
   const weekStart = startOfWeek(selected);
   const weekEnd = endOfDay(addDays(weekStart, 6));
   await materializeRecurring(weekStart, weekEnd);
 
-  const jobs = await prisma.scheduledJob.findMany({
-    where: { date: { gte: startOfDay(weekStart), lte: weekEnd } },
-    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+  const [jobs, labour, settings] = await Promise.all([
+    prisma.scheduledJob.findMany({
+      where: { date: { gte: startOfDay(weekStart), lte: weekEnd } },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      include: {
+        customer: { select: { name: true } },
+        crew: { select: { id: true, name: true, colour: true } },
+      },
+    }),
+    prisma.crewLabour.findMany({
+      where: { date: { gte: startOfDay(weekStart), lte: weekEnd } },
+    }),
+    getSettings(),
+  ]);
+  const currency = settings.currency;
+
+  const today = new Date();
+  const days: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(weekStart, i);
+    const dayJobs = jobs.filter((j) => isSameDay(j.date, day));
+    return {
+      dateStr: toDateInput(day),
+      weekday: formatWeekdayShort(day),
+      dayNumber: formatDayNumber(day),
+      monthLabel: formatMonthShort(day),
+      showMonth: i === 0 || formatDayNumber(day) === "1",
+      isToday: isSameDay(day, today),
+      isPast: day < startOfDay(today),
+      jobs: dayJobs.map((j) => ({
+        id: j.id,
+        title: j.title,
+        price: j.price,
+        status: j.status,
+        crewName: j.crew?.name ?? null,
+        crewColour: j.crew?.colour ?? null,
+        customerName: j.customer?.name ?? null,
+      })),
+    };
   });
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const weekTakings = jobs
-    .filter((j) => j.status === "DONE")
-    .reduce((s, j) => s + j.price, 0);
+  const weekCrews: WeekCrew[] = [];
+  for (const j of jobs) {
+    if (j.crew && !weekCrews.some((c) => c.id === j.crew!.id)) {
+      weekCrews.push({ id: j.crew.id, name: j.crew.name, colour: j.crew.colour });
+    }
+  }
+
+  const doneJobs = jobs.filter((j) => j.status === "DONE");
+  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
+  const wages = labour.reduce((s, l) => s + l.amount, 0);
+  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
+  const costs = wages + materialsPaid;
+  const profit = takings - costs;
 
   return (
-    <div>
-      <div className="card mb-4 flex items-center justify-between p-4">
-        <span className="eyebrow">Week takings so far</span>
-        <span className="ledger font-display text-xl font-extrabold text-brand-900">
-          {formatMoney(weekTakings)}
-        </span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <TillTile label="Done" value={`${doneJobs.length}/${jobs.length}`} />
+        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
+        <TillTile
+          label="Costs"
+          value={
+            costs > 0 ? `−${formatMoney(costs, currency)}` : formatMoney(0, currency)
+          }
+          negative={costs > 0}
+        />
+        <TillTile
+          label="Profit this week"
+          value={formatMoney(profit, currency)}
+          accent={profit >= 0}
+          negative={profit < 0}
+          sum
+        />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {days.map((day) => {
-          const dayJobs = jobs.filter((j) => isSameDay(j.date, day));
-          const done = dayJobs.filter((j) => j.status === "DONE");
-          const takings = done.reduce((s, j) => s + j.price, 0);
-          const isToday = isSameDay(day, new Date());
-          return (
-            <Link
-              key={day.toISOString()}
-              href={`/calendar?view=day&date=${toDateInput(day)}`}
-              className={`card p-4 transition-colors hover:border-brand-300 ${
-                isToday ? "ring-2 ring-lime-500/40" : ""
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-display text-sm font-bold text-brand-900">
-                  {formatDayShort(day)}
-                </span>
-                {isToday && <span className="badge bg-lime-100 text-lime-600">Today</span>}
-              </div>
-              <div className="ledger mt-2 text-3xl font-extrabold text-stone-900">
-                {dayJobs.length}
-              </div>
-              <div className="text-xs text-stone-500">
-                {done.length} done · <span className="ledger">{formatMoney(takings)}</span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {crews.map((c) => {
-                  const n = dayJobs.filter((j) => j.crewId === c.id).length;
-                  if (n === 0) return null;
-                  return (
-                    <span
-                      key={c.id}
-                      className="badge text-stone-600"
-                      style={{ background: c.colour + "22" }}
-                    >
-                      {c.name}: {n}
-                    </span>
-                  );
-                })}
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+
+      <WeekGrid days={days} crews={weekCrews} currency={currency} />
     </div>
   );
 }

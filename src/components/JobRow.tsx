@@ -186,12 +186,19 @@ export function JobRow({
                     { method: "UNPAID", label: "Not paid yet" },
                   ] as const
                 ).map((opt) => (
-                  <form key={opt.method} action={completeJob}>
+                  // Close after the action resolves — closing in onClick
+                  // unmounts the form before it submits, so nothing sends.
+                  <form
+                    key={opt.method}
+                    action={async (fd) => {
+                      await completeJob(fd);
+                      setTickMenuOpen(false);
+                    }}
+                  >
                     <input type="hidden" name="id" value={job.id} />
                     <input type="hidden" name="method" value={opt.method} />
                     <button
                       type="submit"
-                      onClick={() => setTickMenuOpen(false)}
                       className={`w-full px-3 py-2 text-left text-sm font-semibold hover:bg-stone-50 ${
                         opt.method === "UNPAID"
                           ? "text-stone-500"
@@ -278,12 +285,17 @@ export function JobRow({
                       Paid by
                     </div>
                     {(["CASH", "BANK"] as const).map((m) => (
-                      <form key={m} action={setJobPayment}>
+                      <form
+                        key={m}
+                        action={async (fd) => {
+                          await setJobPayment(fd);
+                          setPayMenuOpen(false);
+                        }}
+                      >
                         <input type="hidden" name="id" value={job.id} />
                         <input type="hidden" name="method" value={m} />
                         <button
                           type="submit"
-                          onClick={() => setPayMenuOpen(false)}
                           className="w-full px-3 py-2 text-left text-sm font-semibold text-stone-700 hover:bg-stone-50"
                         >
                           {m === "CASH" ? "Cash" : "Bank transfer"}

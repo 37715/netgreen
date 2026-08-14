@@ -68,6 +68,32 @@ export function endOfMonth(d: Date): Date {
   return endOfDay(last);
 }
 
+/** Shift by whole calendar months, clamping the day if the target is shorter. */
+export function addMonths(d: Date, months: number): Date {
+  const { y, m, d: day } = partsFromKey(calendarDayKey(d));
+  const target = new Date(Date.UTC(y, m - 1 + months, 1, 12, 0, 0, 0));
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0, 12, 0, 0, 0)
+  ).getUTCDate();
+  return new Date(
+    Date.UTC(
+      target.getUTCFullYear(),
+      target.getUTCMonth(),
+      Math.min(day, lastDay),
+      12,
+      0,
+      0,
+      0
+    )
+  );
+}
+
+export function isSameMonth(a: Date, b: Date): boolean {
+  const aa = partsFromKey(calendarDayKey(a));
+  const bb = partsFromKey(calendarDayKey(b));
+  return aa.y === bb.y && aa.m === bb.m;
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return calendarDayKey(a) === calendarDayKey(b);
 }
@@ -93,6 +119,10 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 export function formatDayLabel(d: Date): string {
@@ -126,6 +156,12 @@ export function formatDayNumber(d: Date): string {
 /** "Jul" — month only. */
 export function formatMonthShort(d: Date): string {
   return MONTHS[partsFromKey(calendarDayKey(d)).m - 1];
+}
+
+/** "August 2026" — month view heading. */
+export function formatMonthYear(d: Date): string {
+  const { y, m } = partsFromKey(calendarDayKey(d));
+  return `${MONTHS_LONG[m - 1]} ${y}`;
 }
 
 /** "20 – 26 Jul" (adds both months when the week straddles two). */

@@ -6,18 +6,26 @@ import {
   startOfDay,
   endOfDay,
   addDays,
+  addMonths,
   startOfWeek,
+  startOfMonth,
+  endOfMonth,
   toDateInput,
   fromDateInput,
   isSameDay,
+  isSameMonth,
   formatDayLabel,
   formatWeekdayShort,
   formatDayNumber,
   formatMonthShort,
   formatWeekRange,
+  formatMonthYear,
+  daysBetween,
+  toStoredDay,
 } from "@/lib/dates";
 import { JobRowData } from "@/components/JobRow";
 import { WeekGrid, WeekDay, WeekCrew } from "@/components/WeekGrid";
+import { MonthGrid, MonthDay } from "@/components/MonthGrid";
 import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
 import { DayCrewBar } from "@/components/DayCrewBar";
@@ -28,6 +36,13 @@ import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
+type CalView = "day" | "week" | "month";
+
+function parseView(value?: string): CalView {
+  if (value === "week" || value === "month") return value;
+  return "day";
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -35,7 +50,7 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const selected = sp.date ? fromDateInput(sp.date) : startOfDay(new Date());
-  const view = sp.view === "week" ? "week" : "day";
+  const view = parseView(sp.view);
 
   const customers =
     view === "day"
@@ -56,27 +71,60 @@ export default async function CalendarPage({
       <CalendarHeader selected={selected} view={view} />
       {view === "day" ? (
         <DayView selected={selected} customers={customers} />
-      ) : (
+      ) : view === "week" ? (
         <WeekView selected={selected} />
+      ) : (
+        <MonthView selected={selected} />
       )}
     </div>
   );
 }
 
-function CalendarHeader({ selected, view }: { selected: Date; view: string }) {
-  const step = view === "week" ? 7 : 1;
-  const prev = toDateInput(addDays(selected, -step));
-  const next = toDateInput(addDays(selected, step));
-  const today = toDateInput(new Date());
-  const isToday = isSameDay(selected, new Date());
-  const weekStart = startOfWeek(selected);
-  const thisWeek = isSameDay(weekStart, startOfWeek(new Date()));
+function CalendarHeader({ selected, view }: { selected: Date; view: CalView }) {
+  const now = new Date();
+  const today = toDateInput(now);
+  const prev =
+    view === "month"
+      ? toDateInput(addMonths(selected, -1))
+      : toDateInput(addDays(selected, view === "week" ? -7 : -1));
+  const next =
+    view === "month"
+      ? toDateInput(addMonths(selected, 1))
+      : toDateInput(addDays(selected, view === "week" ? 7 : 1));
+
+  const onThisPeriod =
+    view === "month"
+      ? isSameMonth(selected, now)
+      : view === "week"
+        ? isSameDay(startOfWeek(selected), startOfWeek(now))
+        : isSameDay(selected, now);
+
+  const jumpLabel =
+    view === "month" ? "This month" : view === "week" ? "This week" : "Today";
   const eyebrow =
-    view === "week" ? (thisWeek ? "This week" : "Week") : isToday ? "Today" : "Day";
+    view === "month"
+      ? onThisPeriod
+        ? "This month"
+        : "Month"
+      : view === "week"
+        ? onThisPeriod
+          ? "This week"
+          : "Week"
+        : onThisPeriod
+          ? "Today"
+          : "Day";
   const label =
-    view === "week"
-      ? formatWeekRange(weekStart, addDays(weekStart, 6))
-      : formatDayLabel(selected);
+    view === "month"
+      ? formatMonthYear(selected)
+      : view === "week"
+        ? formatWeekRange(startOfWeek(selected), addDays(startOfWeek(selected), 6))
+        : formatDayLabel(selected);
+
+  const views: { key: CalView; label: string }[] = [
+    { key: "day", label: "Day" },
+    { key: "week", label: "Week" },
+    { key: "month", label: "Month" },
+  ];
 
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -100,30 +148,27 @@ function CalendarHeader({ selected, view }: { selected: Date; view: string }) {
           >
             <ChevronRightIcon className="h-5 w-5" />
           </Link>
-          {!(view === "week" ? thisWeek : isToday) && (
+          {!onThisPeriod && (
             <Link href={`/calendar?view=${view}&date=${today}`} className="btn-ghost ml-1">
-              {view === "week" ? "This week" : "Today"}
+              {jumpLabel}
             </Link>
           )}
         </div>
       </div>
       <div className="flex rounded-xl border border-stone-200 bg-white p-1">
-        <Link
-          href={`/calendar?view=day&date=${toDateInput(selected)}`}
-          className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
-            view === "day" ? "bg-brand-700 text-white" : "text-stone-600 hover:bg-stone-100"
-          }`}
-        >
-          Day
-        </Link>
-        <Link
-          href={`/calendar?view=week&date=${toDateInput(selected)}`}
-          className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
-            view === "week" ? "bg-brand-700 text-white" : "text-stone-600 hover:bg-stone-100"
-          }`}
-        >
-          Week
-        </Link>
+        {views.map((v) => (
+          <Link
+            key={v.key}
+            href={`/calendar?view=${v.key}&date=${toDateInput(selected)}`}
+            className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
+              view === v.key
+                ? "bg-brand-700 text-white"
+                : "text-stone-600 hover:bg-stone-100"
+            }`}
+          >
+            {v.label}
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -367,6 +412,115 @@ async function WeekView({ selected }: { selected: Date }) {
       </div>
 
       <WeekGrid days={days} crews={weekCrews} currency={currency} />
+    </div>
+  );
+}
+
+function jobsToWeekJobs(
+  jobs: {
+    id: number;
+    title: string;
+    price: number;
+    status: "SCHEDULED" | "DONE" | "SKIPPED";
+    customer: { name: string } | null;
+    crew: { id: number; name: string; colour: string } | null;
+  }[]
+) {
+  return jobs.map((j) => ({
+    id: j.id,
+    title: j.title,
+    price: j.price,
+    status: j.status,
+    crewName: j.crew?.name ?? null,
+    crewColour: j.crew?.colour ?? null,
+    customerName: j.customer?.name ?? null,
+  }));
+}
+
+function crewsFromJobs(
+  jobs: { crew: { id: number; name: string; colour: string } | null }[]
+): WeekCrew[] {
+  const crews: WeekCrew[] = [];
+  for (const j of jobs) {
+    if (j.crew && !crews.some((c) => c.id === j.crew!.id)) {
+      crews.push({ id: j.crew.id, name: j.crew.name, colour: j.crew.colour });
+    }
+  }
+  return crews;
+}
+
+async function MonthView({ selected }: { selected: Date }) {
+  const monthStart = startOfMonth(selected);
+  const monthEnd = endOfMonth(selected);
+  const gridStart = startOfWeek(monthStart);
+  const gridEnd = addDays(startOfWeek(toStoredDay(monthEnd)), 6);
+  await materializeRecurring(gridStart, gridEnd);
+
+  const [jobs, labour, settings] = await Promise.all([
+    prisma.scheduledJob.findMany({
+      where: { date: { gte: startOfDay(gridStart), lte: endOfDay(gridEnd) } },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      include: {
+        customer: { select: { name: true } },
+        crew: { select: { id: true, name: true, colour: true } },
+      },
+    }),
+    prisma.crewLabour.findMany({
+      where: { date: { gte: startOfDay(monthStart), lte: monthEnd } },
+    }),
+    getSettings(),
+  ]);
+  const currency = settings.currency;
+  const today = new Date();
+  const dayCount = daysBetween(gridStart, gridEnd) + 1;
+
+  const days: MonthDay[] = Array.from({ length: dayCount }, (_, i) => {
+    const day = addDays(gridStart, i);
+    const dayJobs = jobs.filter((j) => isSameDay(j.date, day));
+    return {
+      dateStr: toDateInput(day),
+      dayNumber: formatDayNumber(day),
+      isToday: isSameDay(day, today),
+      isPast: day < startOfDay(today),
+      isCurrentMonth: isSameMonth(day, monthStart),
+      jobs: jobsToWeekJobs(dayJobs),
+    };
+  });
+
+  const monthJobs = jobs.filter((j) => isSameMonth(j.date, monthStart));
+  const doneJobs = monthJobs.filter((j) => j.status === "DONE");
+  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
+  const wages = labour.reduce((s, l) => s + l.amount, 0);
+  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
+  const costs = wages + materialsPaid;
+  const profit = takings - costs;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <TillTile label="Done" value={`${doneJobs.length}/${monthJobs.length}`} />
+        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
+        <TillTile
+          label="Costs"
+          value={
+            costs > 0 ? `−${formatMoney(costs, currency)}` : formatMoney(0, currency)
+          }
+          negative={costs > 0}
+        />
+        <TillTile
+          label="Profit this month"
+          value={formatMoney(profit, currency)}
+          accent={profit >= 0}
+          negative={profit < 0}
+          sum
+        />
+      </div>
+
+      <MonthGrid
+        days={days}
+        crews={crewsFromJobs(jobs)}
+        currency={currency}
+      />
     </div>
   );
 }

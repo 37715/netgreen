@@ -21,6 +21,7 @@ export type RangeSummary = {
   overheadCosts: number;
   projectCosts: number;
   labourCosts: number;
+  revenueShareCosts: number;
   costs: number;
   profit: number;
   jobsDone: number;
@@ -30,6 +31,7 @@ export type RangeSummary = {
  * Cash-basis summary for a date range:
  *  revenue = completed quick jobs + project payments received
  *  costs   = overheads + project costs + extra crew + materials we paid for
+ *            + revenue share owed on tagged customers' jobs
  *  profit  = revenue - costs
  */
 export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummary> {
@@ -45,6 +47,11 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
         wasteBagPrice: true,
         materialsCharge: true,
         materialsPaid: true,
+        customer: {
+          select: {
+            revenueShare: { select: { percent: true, active: true } },
+          },
+        },
       },
     }),
     prisma.payment.findMany({
@@ -79,9 +86,26 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
   );
   const labourCosts = sum(labour.map((l) => l.amount));
+  const revenueShareCosts = revenueShareCostForJobs(
+    doneJobs.map((j) => ({
+      price: j.price,
+      wasteBags: j.wasteBags,
+      wasteBagPrice: j.wasteBagPrice,
+      materialsCharge: j.materialsCharge,
+      sharePercent:
+        j.customer?.revenueShare?.active === true
+          ? j.customer.revenueShare.percent
+          : null,
+    }))
+  );
 
   const revenue = quickIncome + projectIncome;
-  const costs = overheadCosts + projectCostsTotal + labourCosts + materialsPaid;
+  const costs =
+    overheadCosts +
+    projectCostsTotal +
+    labourCosts +
+    materialsPaid +
+    revenueShareCosts;
 
   return {
     quickIncome,
@@ -94,6 +118,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     overheadCosts,
     projectCosts: projectCostsTotal,
     labourCosts,
+    revenueShareCosts,
     costs,
     profit: revenue - costs,
     jobsDone: doneJobs.length,
@@ -279,6 +304,29 @@ export type RevenueShareDealWeeks = {
   totalSent: number;
   weeksSent: number;
 };
+
+/**
+ * Revenue-share cost for jobs in a period: each tagged job contributes
+ * (labour takings × deal %). Untagged jobs contribute nothing.
+ */
+export function revenueShareCostForJobs(
+  jobs: {
+    price: number;
+    wasteBags: number | null;
+    wasteBagPrice: number | null;
+    materialsCharge?: number | null;
+    sharePercent: number | null;
+  }[]
+): number {
+  return toPence(
+    sum(
+      jobs.map((j) => {
+        if (j.sharePercent == null || j.sharePercent <= 0) return 0;
+        return (jobLabourTakings(j) * j.sharePercent) / 100;
+      })
+    )
+  );
+}
 
 /** Labour takings on a job = price minus waste and materials charges. */
 export function jobLabourTakings(job: {

@@ -153,7 +153,7 @@ export default async function DashboardPage({
             <span className="ledger font-semibold text-white">
               {formatMoney(summary.costs, currency)}
             </span>{" "}
-            on materials and overheads. That left{" "}
+            on costs. That left{" "}
             <span className="font-semibold text-white">
               {formatMoney(summary.profit, currency)}
             </span>{" "}
@@ -209,6 +209,10 @@ export default async function DashboardPage({
             <Row label="Project materials & costs" value={formatMoney(summary.projectCosts, currency)} />
             <Row label="Job materials bought" value={formatMoney(summary.materialsPaid, currency)} />
             <Row label="Extra crew wages" value={formatMoney(summary.labourCosts, currency)} />
+            <Row
+              label="Revenue share"
+              value={formatMoney(summary.revenueShareCosts, currency)}
+            />
           </dl>
           <div className="mt-auto pt-4">
             <Total label="Costs" value={formatMoney(summary.costs, currency)} />

@@ -57,7 +57,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     }),
     prisma.projectCost.findMany({
       where: { date: { gte, lte } },
-      select: { amount: true },
+      select: { amount: true, reimbursable: true },
     }),
     prisma.crewLabour.findMany({
       where: { date: { gte, lte } },
@@ -75,7 +75,9 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const materialsPaid = sum(doneJobs.map((j) => j.materialsPaid ?? 0));
   const projectIncome = sum(payments.map((p) => p.amount));
   const overheadCosts = sum(overheads.map((o) => o.amount));
-  const projectCostsTotal = sum(projectCosts.map((c) => c.amount));
+  const projectCostsTotal = sum(
+    projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
+  );
   const labourCosts = sum(labour.map((l) => l.amount));
 
   const revenue = quickIncome + projectIncome;
@@ -205,6 +207,7 @@ export async function getPaymentSplit(
 export type ProjectTotals = {
   paid: number;
   costs: number;
+  reimbursed: number;
   profit: number;
   margin: number | null;
   quoted: number;
@@ -213,17 +216,21 @@ export type ProjectTotals = {
 
 export function projectTotals(p: {
   quotedPrice: number;
-  costs: { amount: number }[];
+  costs: { amount: number; reimbursable?: boolean }[];
   payments: { amount: number }[];
 }): ProjectTotals {
   const paid = sum(p.payments.map((x) => x.amount));
-  const costs = sum(p.costs.map((x) => x.amount));
+  const costs = sum(p.costs.filter((x) => !x.reimbursable).map((x) => x.amount));
+  const reimbursed = sum(
+    p.costs.filter((x) => x.reimbursable).map((x) => x.amount)
+  );
   // Use the larger of quoted or paid as the job's value for margin so a job
   // that is quoted but not yet fully paid still shows a sensible margin.
   const revenueBasis = Math.max(p.quotedPrice, paid);
   return {
     paid,
     costs,
+    reimbursed,
     profit: paid - costs,
     margin: marginPercent(revenueBasis, costs),
     quoted: p.quotedPrice,

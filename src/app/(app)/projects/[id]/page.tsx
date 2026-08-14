@@ -66,7 +66,16 @@ export default async function ProjectDetailPage({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Quoted" value={formatMoney(t.quoted)} />
         <StatCard label="Paid in" value={formatMoney(t.paid)} tone="default" hint={`${formatMoney(t.outstanding)} outstanding`} />
-        <StatCard label="Costs out" value={formatMoney(t.costs)} tone="negative" />
+        <StatCard
+          label="Costs out"
+          value={formatMoney(t.costs)}
+          tone="negative"
+          hint={
+            t.reimbursed > 0
+              ? `${formatMoney(t.reimbursed)} reimbursed by customer — not in profit`
+              : undefined
+          }
+        />
         <StatCard
           label="Profit"
           value={formatMoney(t.profit)}
@@ -85,8 +94,9 @@ export default async function ProjectDetailPage({
         <div className="card p-4">
           <h2 className="text-sm font-bold text-stone-800 mb-1">Costs &amp; materials</h2>
           <p className="text-xs text-stone-500 mb-3">
-            Tip: if the customer pays you back for materials, tick &quot;reimbursable&quot; and also log
-            their repayment as a payment — profit stays just your markup.
+            Tick &quot;Customer reimburses this&quot; for pass-through spend (plants, skip hire
+            they pay back). Those costs stay on the list but do not hit profit — don&apos;t
+            also log the repayment as a payment.
           </p>
           {project.costs.length === 0 ? (
             <p className="py-4 text-center text-sm text-stone-400">No costs yet</p>
@@ -100,7 +110,7 @@ export default async function ProjectDetailPage({
                     </div>
                     <div className="text-xs text-stone-400">
                       {costCategoryLabel[c.category]} · {formatDayLabel(c.date)}
-                      {c.reimbursable && " · reimbursable"}
+                      {c.reimbursable && " · customer reimburses — not in profit"}
                     </div>
                   </div>
                   <span className="text-sm font-semibold text-stone-800 tabular-nums">

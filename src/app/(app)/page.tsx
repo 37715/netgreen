@@ -212,6 +212,7 @@ export default async function DashboardPage({
             <Row
               label="Revenue share"
               value={formatMoney(summary.revenueShareCosts, currency)}
+              hint="Assuming you've paid it"
             />
           </dl>
           <div className="mt-auto pt-4">
@@ -319,11 +320,22 @@ export default async function DashboardPage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
-    <div className="flex items-center justify-between">
-      <dt className="text-stone-600">{label}</dt>
-      <dd className="ledger text-stone-700">{value}</dd>
+    <div>
+      <div className="flex items-center justify-between">
+        <dt className="text-stone-600">{label}</dt>
+        <dd className="ledger text-stone-700">{value}</dd>
+      </div>
+      {hint && <p className="mt-0.5 text-[11px] text-stone-400">{hint}</p>}
     </div>
   );
 }

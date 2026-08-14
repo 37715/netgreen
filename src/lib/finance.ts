@@ -13,6 +13,7 @@ import {
 export type RangeSummary = {
   quickIncome: number;
   wasteIncome: number;
+  wasteBags: number;
   materialsIncome: number;
   materialsPaid: number;
   materialsProfit: number;
@@ -78,6 +79,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const wasteIncome = sum(
     doneJobs.map((j) => (j.wasteBags ?? 0) * (j.wasteBagPrice ?? 0))
   );
+  const wasteBags = sum(doneJobs.map((j) => j.wasteBags ?? 0));
   const materialsIncome = sum(doneJobs.map((j) => j.materialsCharge ?? 0));
   const materialsPaid = sum(doneJobs.map((j) => j.materialsPaid ?? 0));
   const projectIncome = sum(payments.map((p) => p.amount));
@@ -110,6 +112,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   return {
     quickIncome,
     wasteIncome,
+    wasteBags,
     materialsIncome,
     materialsPaid,
     materialsProfit: materialsIncome - materialsPaid,

@@ -180,9 +180,11 @@ export default async function DashboardPage({
           </div>
           <dl className="mt-4 space-y-2.5 text-sm">
             <Row label="Maintenance & quick jobs" value={formatMoney(summary.quickIncome, currency)} />
-            {summary.wasteIncome > 0 && (
+            {(summary.wasteIncome > 0 || summary.wasteBags > 0) && (
               <SubRow
-                label="incl. waste removal"
+                label={`incl. waste removal · ${summary.wasteBags} ${
+                  summary.wasteBags === 1 ? "bag" : "bags"
+                }`}
                 value={formatMoney(summary.wasteIncome, currency)}
               />
             )}

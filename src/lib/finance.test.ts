@@ -88,16 +88,22 @@ describe("bucketYearMonths", () => {
       ],
       payments: [],
       overheads: [
-        { date: fromDateInput("2026-01-20"), amount: 40 },
+        { date: fromDateInput("2026-01-20"), amount: 40, description: "Diesel", category: "FUEL" },
       ],
       projectCosts: [],
-      labour: [],
+      labour: [
+        { date: fromDateInput("2026-01-12"), amount: 90, name: "Hugo" },
+      ],
     });
 
     assert.equal(months.length, 12);
     assert.equal(months[0].label, "Jan");
     assert.equal(months[0].revenue, 100);
-    assert.equal(months[0].profit, 60);
+    assert.equal(months[0].profit, -30);
+    assert.deepEqual(months[0].costs, [
+      { label: "Hugo", amount: 90 },
+      { label: "Diesel", amount: 40 },
+    ]);
     assert.equal(months[1].label, "Feb");
     assert.equal(months[1].revenue, 200);
     assert.equal(months[1].profit, 200);

@@ -40,6 +40,7 @@ type MoneyJob = {
   wasteBagPrice: number | null;
   materialsCharge?: number | null;
   materialsPaid?: number | null;
+  materialsNote?: string | null;
   customer?: {
     revenueShare: { percent: number; active: boolean } | null;
   } | null;
@@ -159,6 +160,11 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   });
 }
 
+export type YearMonthCost = {
+  label: string;
+  amount: number;
+};
+
 export type YearMonthRow = {
   key: string;
   label: string;
@@ -166,12 +172,98 @@ export type YearMonthRow = {
   profit: number;
   isCurrent: boolean;
   isFuture: boolean;
+  costs: YearMonthCost[];
 };
 
 type Dated<T> = T & { date: Date };
 
+const OVERHEAD_LABEL: Record<string, string> = {
+  TOOLS: "Tools / equipment",
+  FUEL: "Fuel",
+  INSURANCE: "Insurance",
+  VAN: "Van",
+  SOFTWARE: "Software / subs",
+  MILEAGE: "Mileage",
+  OTHER: "Other",
+};
+
+const PROJECT_COST_LABEL: Record<string, string> = {
+  MATERIALS: "Project materials",
+  WAGES: "Employee wages",
+  HIRE: "Hire / plant",
+  WASTE: "Waste / skip",
+  OTHER: "Project cost",
+};
+
 function calendarMonthKey(d: Date): string {
   return calendarDayKey(d).slice(0, 7);
+}
+
+function namedAmount(description: string | null | undefined, fallback: string): string {
+  const text = description?.trim();
+  return text ? text : fallback;
+}
+
+export function costLinesForMonth(input: {
+  jobs: MoneyJob[];
+  overheads: { amount: number; description?: string | null; category?: string }[];
+  projectCosts: {
+    amount: number;
+    description?: string | null;
+    category?: string;
+    reimbursable?: boolean;
+  }[];
+  labour: { amount: number; name?: string | null }[];
+}): YearMonthCost[] {
+  const lines: YearMonthCost[] = [];
+
+  for (const o of input.overheads) {
+    if (o.amount <= 0) continue;
+    lines.push({
+      label: namedAmount(o.description, OVERHEAD_LABEL[o.category ?? ""] ?? "Overhead"),
+      amount: o.amount,
+    });
+  }
+  for (const c of input.projectCosts) {
+    if (c.reimbursable || c.amount <= 0) continue;
+    lines.push({
+      label: namedAmount(
+        c.description,
+        PROJECT_COST_LABEL[c.category ?? ""] ?? "Project cost"
+      ),
+      amount: c.amount,
+    });
+  }
+  for (const l of input.labour) {
+    if (l.amount <= 0) continue;
+    lines.push({
+      label: namedAmount(l.name, "Extra crew"),
+      amount: l.amount,
+    });
+  }
+  for (const j of input.jobs) {
+    if ((j.materialsPaid ?? 0) <= 0) continue;
+    lines.push({
+      label: namedAmount(j.materialsNote, "Job materials"),
+      amount: j.materialsPaid ?? 0,
+    });
+  }
+
+  const share = revenueShareCostForJobs(
+    input.jobs.map((j) => ({
+      price: j.price,
+      wasteBags: j.wasteBags,
+      wasteBagPrice: j.wasteBagPrice,
+      materialsCharge: j.materialsCharge,
+      sharePercent:
+        j.customer?.revenueShare?.active === true
+          ? j.customer.revenueShare.percent
+          : null,
+    }))
+  );
+  if (share > 0) lines.push({ label: "Revenue share", amount: share });
+
+  return lines.sort((a, b) => b.amount - a.amount);
 }
 
 /** Split a year's figures into 12 month cells. Pure — used by the year view. */
@@ -181,9 +273,18 @@ export function bucketYearMonths(
   data: {
     jobs: Dated<MoneyJob>[];
     payments: Dated<{ amount: number }>[];
-    overheads: Dated<{ amount: number }>[];
-    projectCosts: Dated<{ amount: number; reimbursable?: boolean }>[];
-    labour: Dated<{ amount: number }>[];
+    overheads: Dated<{
+      amount: number;
+      description?: string | null;
+      category?: string;
+    }>[];
+    projectCosts: Dated<{
+      amount: number;
+      reimbursable?: boolean;
+      description?: string | null;
+      category?: string;
+    }>[];
+    labour: Dated<{ amount: number; name?: string | null }>[];
   }
 ): YearMonthRow[] {
   const nowKey = calendarMonthKey(now);
@@ -191,12 +292,16 @@ export function bucketYearMonths(
     const key = `${year}-${String(i + 1).padStart(2, "0")}`;
     const inMonth = <T extends { date: Date }>(rows: T[]) =>
       rows.filter((r) => calendarMonthKey(r.date) === key);
+    const jobs = inMonth(data.jobs);
+    const overheads = inMonth(data.overheads);
+    const projectCosts = inMonth(data.projectCosts);
+    const labour = inMonth(data.labour);
     const summary = summarizeMoney({
-      jobs: inMonth(data.jobs),
+      jobs,
       payments: inMonth(data.payments),
-      overheads: inMonth(data.overheads),
-      projectCosts: inMonth(data.projectCosts),
-      labour: inMonth(data.labour),
+      overheads,
+      projectCosts,
+      labour,
     });
     return {
       key,
@@ -205,6 +310,7 @@ export function bucketYearMonths(
       profit: summary.profit,
       isCurrent: key === nowKey,
       isFuture: key > nowKey,
+      costs: costLinesForMonth({ jobs, overheads, projectCosts, labour }),
     };
   });
 }
@@ -226,6 +332,7 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
         wasteBagPrice: true,
         materialsCharge: true,
         materialsPaid: true,
+        materialsNote: true,
         customer: {
           select: {
             revenueShare: { select: { percent: true, active: true } },
@@ -239,15 +346,21 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
     }),
     prisma.overhead.findMany({
       where: { date: { gte, lte } },
-      select: { date: true, amount: true },
+      select: { date: true, amount: true, description: true, category: true },
     }),
     prisma.projectCost.findMany({
       where: { date: { gte, lte } },
-      select: { date: true, amount: true, reimbursable: true },
+      select: {
+        date: true,
+        amount: true,
+        reimbursable: true,
+        description: true,
+        category: true,
+      },
     }),
     prisma.crewLabour.findMany({
       where: { date: { gte, lte } },
-      select: { date: true, amount: true },
+      select: { date: true, amount: true, name: true },
     }),
   ]);
 

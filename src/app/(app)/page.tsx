@@ -5,20 +5,24 @@ import {
   getRangeSummary,
   getPaymentSplit,
   getRevenueShareWeeks,
+  getYearMonths,
   projectTotals,
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import {
   startOfWeek,
   startOfMonth,
+  startOfYear,
   endOfMonth,
   addDays,
+  addMonths,
   endOfDay,
 } from "@/lib/dates";
 import { MarginBadge } from "@/components/ui";
 import { StillOwed, type OwedItem } from "@/components/StillOwed";
 import { RevenueShareCard } from "@/components/RevenueShareCard";
 import { TakingsSplit } from "@/components/TakingsSplit";
+import { YearMonthGrid } from "@/components/YearMonthGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +35,10 @@ function resolveRange(key: RangeKey): { from: Date; to: Date; label: string } {
     return { from, to: endOfDay(addDays(from, 6)), label: "this week" };
   }
   if (key === "year") {
+    const from = startOfYear(now);
     return {
-      from: new Date(now.getFullYear(), 0, 1),
-      to: endOfDay(new Date(now.getFullYear(), 11, 31)),
+      from: from,
+      to: endOfMonth(addMonths(from, 11)),
       label: "this year",
     };
   }
@@ -54,7 +59,7 @@ export default async function DashboardPage({
   const settings = await getSettings();
   const currency = settings.currency;
 
-  const [summary, split, projects, debts, shareDeals] = await Promise.all([
+  const [summary, split, projects, debts, shareDeals, yearMonths] = await Promise.all([
     getRangeSummary(from, to),
     getPaymentSplit(from, to),
     prisma.project.findMany({
@@ -67,6 +72,7 @@ export default async function DashboardPage({
     }),
     // Revenue share always runs on calendar weeks, not the range picker above.
     getRevenueShareWeeks({ weeksBack: 8 }),
+    rangeKey === "year" ? getYearMonths() : Promise.resolve(null),
   ]);
 
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
@@ -170,6 +176,10 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
+
+      {yearMonths && (
+        <YearMonthGrid months={yearMonths} currency={currency} />
+      )}
 
       {/* Money in / Money out — two separate ledgers */}
       <div className="mt-4 grid items-stretch gap-4 lg:grid-cols-2">

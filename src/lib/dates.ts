@@ -62,6 +62,11 @@ export function startOfMonth(d: Date): Date {
   return new Date(Date.UTC(y, m - 1, 1, 12, 0, 0, 0));
 }
 
+export function startOfYear(d: Date): Date {
+  const { y } = partsFromKey(calendarDayKey(d));
+  return new Date(Date.UTC(y, 0, 1, 12, 0, 0, 0));
+}
+
 export function endOfMonth(d: Date): Date {
   const { y, m } = partsFromKey(calendarDayKey(d));
   const last = new Date(Date.UTC(y, m, 0, 12, 0, 0, 0));

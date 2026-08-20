@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { projectTotals, revenueShareCostForJobs } from "./finance";
+import { fromDateInput } from "./dates";
+import {
+  projectTotals,
+  revenueShareCostForJobs,
+  bucketYearMonths,
+} from "./finance";
 
 describe("projectTotals", () => {
   it("does not let a reimbursable cost hit profit", () => {
@@ -55,5 +60,48 @@ describe("revenueShareCostForJobs", () => {
       },
     ]);
     assert.equal(cost, 0);
+  });
+});
+
+describe("bucketYearMonths", () => {
+  it("puts each month's revenue and profit in its own cell", () => {
+    const months = bucketYearMonths(2026, fromDateInput("2026-08-14"), {
+      jobs: [
+        {
+          date: fromDateInput("2026-01-10"),
+          price: 100,
+          wasteBags: null,
+          wasteBagPrice: null,
+          materialsCharge: null,
+          materialsPaid: 0,
+          customer: null,
+        },
+        {
+          date: fromDateInput("2026-02-10"),
+          price: 200,
+          wasteBags: null,
+          wasteBagPrice: null,
+          materialsCharge: null,
+          materialsPaid: 0,
+          customer: null,
+        },
+      ],
+      payments: [],
+      overheads: [
+        { date: fromDateInput("2026-01-20"), amount: 40 },
+      ],
+      projectCosts: [],
+      labour: [],
+    });
+
+    assert.equal(months.length, 12);
+    assert.equal(months[0].label, "Jan");
+    assert.equal(months[0].revenue, 100);
+    assert.equal(months[0].profit, 60);
+    assert.equal(months[1].label, "Feb");
+    assert.equal(months[1].revenue, 200);
+    assert.equal(months[1].profit, 200);
+    assert.equal(months[7].isCurrent, true);
+    assert.equal(months[8].isFuture, true);
   });
 });

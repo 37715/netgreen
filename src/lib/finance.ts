@@ -4,10 +4,16 @@ import {
   startOfDay,
   endOfDay,
   startOfWeek,
+  startOfYear,
+  endOfMonth,
   addDays,
+  addMonths,
   toDateInput,
   toStoredDay,
   formatWeekRange,
+  formatMonthShort,
+  fromDateInput,
+  calendarDayKey,
 } from "@/lib/dates";
 
 export type RangeSummary = {
@@ -27,6 +33,77 @@ export type RangeSummary = {
   profit: number;
   jobsDone: number;
 };
+
+type MoneyJob = {
+  price: number;
+  wasteBags: number | null;
+  wasteBagPrice: number | null;
+  materialsCharge?: number | null;
+  materialsPaid?: number | null;
+  customer?: {
+    revenueShare: { percent: number; active: boolean } | null;
+  } | null;
+};
+
+export function summarizeMoney(input: {
+  jobs: MoneyJob[];
+  payments: { amount: number }[];
+  overheads: { amount: number }[];
+  projectCosts: { amount: number; reimbursable?: boolean }[];
+  labour: { amount: number }[];
+}): RangeSummary {
+  const quickIncome = sum(input.jobs.map((j) => j.price));
+  const wasteIncome = sum(
+    input.jobs.map((j) => (j.wasteBags ?? 0) * (j.wasteBagPrice ?? 0))
+  );
+  const wasteBags = sum(input.jobs.map((j) => j.wasteBags ?? 0));
+  const materialsIncome = sum(input.jobs.map((j) => j.materialsCharge ?? 0));
+  const materialsPaid = sum(input.jobs.map((j) => j.materialsPaid ?? 0));
+  const projectIncome = sum(input.payments.map((p) => p.amount));
+  const overheadCosts = sum(input.overheads.map((o) => o.amount));
+  const projectCostsTotal = sum(
+    input.projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
+  );
+  const labourCosts = sum(input.labour.map((l) => l.amount));
+  const revenueShareCosts = revenueShareCostForJobs(
+    input.jobs.map((j) => ({
+      price: j.price,
+      wasteBags: j.wasteBags,
+      wasteBagPrice: j.wasteBagPrice,
+      materialsCharge: j.materialsCharge,
+      sharePercent:
+        j.customer?.revenueShare?.active === true
+          ? j.customer.revenueShare.percent
+          : null,
+    }))
+  );
+
+  const revenue = quickIncome + projectIncome;
+  const costs =
+    overheadCosts +
+    projectCostsTotal +
+    labourCosts +
+    materialsPaid +
+    revenueShareCosts;
+
+  return {
+    quickIncome,
+    wasteIncome,
+    wasteBags,
+    materialsIncome,
+    materialsPaid,
+    materialsProfit: materialsIncome - materialsPaid,
+    projectIncome,
+    revenue,
+    overheadCosts,
+    projectCosts: projectCostsTotal,
+    labourCosts,
+    revenueShareCosts,
+    costs,
+    profit: revenue - costs,
+    jobsDone: input.jobs.length,
+  };
+}
 
 /**
  * Cash-basis summary for a date range:
@@ -73,59 +150,114 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     }),
   ]);
 
-  const quickIncome = sum(doneJobs.map((j) => j.price));
-  // Waste / materials charges are billed inside each job's price; track as subsets
-  // so we can see the split without double-counting revenue.
-  const wasteIncome = sum(
-    doneJobs.map((j) => (j.wasteBags ?? 0) * (j.wasteBagPrice ?? 0))
-  );
-  const wasteBags = sum(doneJobs.map((j) => j.wasteBags ?? 0));
-  const materialsIncome = sum(doneJobs.map((j) => j.materialsCharge ?? 0));
-  const materialsPaid = sum(doneJobs.map((j) => j.materialsPaid ?? 0));
-  const projectIncome = sum(payments.map((p) => p.amount));
-  const overheadCosts = sum(overheads.map((o) => o.amount));
-  const projectCostsTotal = sum(
-    projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
-  );
-  const labourCosts = sum(labour.map((l) => l.amount));
-  const revenueShareCosts = revenueShareCostForJobs(
-    doneJobs.map((j) => ({
-      price: j.price,
-      wasteBags: j.wasteBags,
-      wasteBagPrice: j.wasteBagPrice,
-      materialsCharge: j.materialsCharge,
-      sharePercent:
-        j.customer?.revenueShare?.active === true
-          ? j.customer.revenueShare.percent
-          : null,
-    }))
-  );
+  return summarizeMoney({
+    jobs: doneJobs,
+    payments,
+    overheads,
+    projectCosts,
+    labour,
+  });
+}
 
-  const revenue = quickIncome + projectIncome;
-  const costs =
-    overheadCosts +
-    projectCostsTotal +
-    labourCosts +
-    materialsPaid +
-    revenueShareCosts;
+export type YearMonthRow = {
+  key: string;
+  label: string;
+  revenue: number;
+  profit: number;
+  isCurrent: boolean;
+  isFuture: boolean;
+};
 
-  return {
-    quickIncome,
-    wasteIncome,
-    wasteBags,
-    materialsIncome,
-    materialsPaid,
-    materialsProfit: materialsIncome - materialsPaid,
-    projectIncome,
-    revenue,
-    overheadCosts,
-    projectCosts: projectCostsTotal,
-    labourCosts,
-    revenueShareCosts,
-    costs,
-    profit: revenue - costs,
-    jobsDone: doneJobs.length,
-  };
+type Dated<T> = T & { date: Date };
+
+function calendarMonthKey(d: Date): string {
+  return calendarDayKey(d).slice(0, 7);
+}
+
+/** Split a year's figures into 12 month cells. Pure — used by the year view. */
+export function bucketYearMonths(
+  year: number,
+  now: Date,
+  data: {
+    jobs: Dated<MoneyJob>[];
+    payments: Dated<{ amount: number }>[];
+    overheads: Dated<{ amount: number }>[];
+    projectCosts: Dated<{ amount: number; reimbursable?: boolean }>[];
+    labour: Dated<{ amount: number }>[];
+  }
+): YearMonthRow[] {
+  const nowKey = calendarMonthKey(now);
+  return Array.from({ length: 12 }, (_, i) => {
+    const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+    const inMonth = <T extends { date: Date }>(rows: T[]) =>
+      rows.filter((r) => calendarMonthKey(r.date) === key);
+    const summary = summarizeMoney({
+      jobs: inMonth(data.jobs),
+      payments: inMonth(data.payments),
+      overheads: inMonth(data.overheads),
+      projectCosts: inMonth(data.projectCosts),
+      labour: inMonth(data.labour),
+    });
+    return {
+      key,
+      label: formatMonthShort(fromDateInput(`${key}-01`)),
+      revenue: summary.revenue,
+      profit: summary.profit,
+      isCurrent: key === nowKey,
+      isFuture: key > nowKey,
+    };
+  });
+}
+
+export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
+  const year = Number(calendarDayKey(now).slice(0, 4));
+  const from = startOfYear(now);
+  const to = endOfMonth(addMonths(from, 11));
+  const gte = startOfDay(from);
+  const lte = endOfDay(to);
+
+  const [jobs, payments, overheads, projectCosts, labour] = await Promise.all([
+    prisma.scheduledJob.findMany({
+      where: { status: "DONE", date: { gte, lte } },
+      select: {
+        date: true,
+        price: true,
+        wasteBags: true,
+        wasteBagPrice: true,
+        materialsCharge: true,
+        materialsPaid: true,
+        customer: {
+          select: {
+            revenueShare: { select: { percent: true, active: true } },
+          },
+        },
+      },
+    }),
+    prisma.payment.findMany({
+      where: { date: { gte, lte } },
+      select: { date: true, amount: true },
+    }),
+    prisma.overhead.findMany({
+      where: { date: { gte, lte } },
+      select: { date: true, amount: true },
+    }),
+    prisma.projectCost.findMany({
+      where: { date: { gte, lte } },
+      select: { date: true, amount: true, reimbursable: true },
+    }),
+    prisma.crewLabour.findMany({
+      where: { date: { gte, lte } },
+      select: { date: true, amount: true },
+    }),
+  ]);
+
+  return bucketYearMonths(year, now, {
+    jobs,
+    payments,
+    overheads,
+    projectCosts,
+    labour,
+  });
 }
 
 export type PaymentSplit = {

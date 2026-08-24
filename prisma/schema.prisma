@@ -228,13 +228,28 @@ model ScheduleException {
   @@unique([customerId, date])
 }
 
+enum OverheadRecurrence {
+  NONE
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
 model Overhead {
   id          Int              @id @default(autoincrement())
   date        DateTime         @default(now())
   category    OverheadCategory @default(OTHER)
   description String           @default("")
   amount      Float            @default(0)
+  // Set on the row you typed in; its copies are generated up to today.
+  recurrence  OverheadRecurrence @default(NONE)
+  recurringSource   Overhead?  @relation("OverheadSeries", fields: [recurringSourceId], references: [id], onDelete: Cascade)
+  recurringSourceId Int?
+  occurrences       Overhead[] @relation("OverheadSeries")
   createdAt   DateTime         @default(now())
+
+  @@unique([recurringSourceId, date])
+  @@index([date])
 }
 
 // Simple IOU: someone owes you a lump sum (shown under Still owed on Money).

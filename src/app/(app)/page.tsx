@@ -9,6 +9,7 @@ import {
   projectTotals,
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
+import { materializeOverheads } from "@/lib/overheads";
 import {
   startOfWeek,
   startOfMonth,
@@ -58,6 +59,10 @@ export default async function DashboardPage({
 
   const settings = await getSettings();
   const currency = settings.currency;
+
+  // Repeating costs post themselves here too, so the totals are right even if
+  // you never open the Costs tab.
+  await materializeOverheads();
 
   const [summary, split, projects, debts, shareDeals, yearMonths] = await Promise.all([
     getRangeSummary(from, to),

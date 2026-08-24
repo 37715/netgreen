@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { formatDayLabel, startOfMonth, endOfMonth, toDateInput } from "@/lib/dates";
+import { materializeOverheads } from "@/lib/overheads";
+import { repeatLabel, type OverheadRepeat } from "@/lib/overhead-recurrence";
 import { PageHeader, StatCard, EmptyState } from "@/components/ui";
 import { Collapsible } from "@/components/Collapsible";
-import { TrashIcon } from "@/components/icons";
-import { createOverhead, deleteOverhead, logMileage } from "@/app/actions/overheads";
+import { CostList, type CostItem } from "@/components/CostList";
+import { createOverhead, logMileage } from "@/app/actions/overheads";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +32,9 @@ const categoryColour: Record<string, string> = {
 
 export default async function OverheadsPage() {
   const now = new Date();
+  await materializeOverheads(now);
   const overheads = await prisma.overhead.findMany({
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
   });
   const monthTotal = overheads
     .filter((o) => o.date >= startOfMonth(now) && o.date <= endOfMonth(now))
@@ -39,6 +42,17 @@ export default async function OverheadsPage() {
   const yearTotal = overheads
     .filter((o) => o.date.getFullYear() === now.getFullYear())
     .reduce((s, o) => s + o.amount, 0);
+
+  const items: CostItem[] = overheads.map((o) => ({
+    id: o.id,
+    dateInput: toDateInput(o.date),
+    dateLabel: formatDayLabel(o.date),
+    category: o.category,
+    description: o.description,
+    amount: o.amount,
+    recurrence: o.recurrence as OverheadRepeat,
+    isCopy: o.recurringSourceId != null,
+  }));
 
   return (
     <div>
@@ -75,6 +89,19 @@ export default async function OverheadsPage() {
               <label className="label">Date</label>
               <input name="date" type="date" defaultValue={toDateInput(now)} className="input" />
             </div>
+            <div>
+              <label className="label">Repeats</label>
+              <select name="recurrence" className="input" defaultValue="NONE">
+                {Object.entries(repeatLabel).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-stone-500 sm:col-span-2">
+              A repeating cost logs itself again every week, month or year from
+              that date, so insurance and subscriptions land in the right month
+              without you adding them.
+            </p>
             <div className="flex items-end sm:col-span-2">
               <button className="btn-primary">Add overhead</button>
             </div>
@@ -116,30 +143,11 @@ export default async function OverheadsPage() {
       {overheads.length === 0 ? (
         <EmptyState title="No overheads logged" hint="Add your running costs to see true profit." />
       ) : (
-        <div className="card divide-y divide-stone-100">
-          {overheads.map((o) => (
-            <div key={o.id} className="flex items-center gap-3 px-4 py-3">
-              <span className={`badge ${categoryColour[o.category]}`}>
-                {categoryLabel[o.category]}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-stone-800">
-                  {o.description || categoryLabel[o.category]}
-                </div>
-                <div className="text-xs text-stone-400">{formatDayLabel(o.date)}</div>
-              </div>
-              <span className="text-sm font-semibold text-stone-800 tabular-nums">
-                {formatMoney(o.amount)}
-              </span>
-              <form action={deleteOverhead}>
-                <input type="hidden" name="id" value={o.id} />
-                <button className="text-stone-300 hover:text-red-500" aria-label="Delete overhead">
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </form>
-            </div>
-          ))}
-        </div>
+        <CostList
+          items={items}
+          categories={categoryLabel}
+          categoryColour={categoryColour}
+        />
       )}
     </div>
   );

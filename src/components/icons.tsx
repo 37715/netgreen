@@ -114,6 +114,26 @@ export function TrashIcon({ className = base }: IconProps) {
   );
 }
 
+export function PencilIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z" />
+      <path d="m14.5 6.5 3 3" />
+    </svg>
+  );
+}
+
+export function RepeatIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9a5 5 0 0 1 5-5h11" />
+      <path d="m17 1 3 3-3 3" />
+      <path d="M20 15a5 5 0 0 1-5 5H4" />
+      <path d="m7 23-3-3 3-3" />
+    </svg>
+  );
+}
+
 export function GripIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">

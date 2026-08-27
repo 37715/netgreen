@@ -252,6 +252,7 @@ export async function setJobStatus(formData: FormData) {
     },
   });
   revalidatePath("/calendar");
+  revalidatePath("/paid");
   revalidatePath("/");
 }
 
@@ -274,6 +275,7 @@ export async function completeJob(formData: FormData) {
     },
   });
   revalidatePath("/calendar");
+  revalidatePath("/paid");
   revalidatePath("/");
 }
 
@@ -309,6 +311,7 @@ export async function setJobPayment(formData: FormData) {
           },
   });
   revalidatePath("/calendar");
+  revalidatePath("/paid");
   revalidatePath("/");
 }
 
@@ -331,6 +334,7 @@ export async function markCustomerJobsPaid(formData: FormData) {
   });
   revalidatePath("/");
   revalidatePath("/calendar");
+  revalidatePath("/paid");
   revalidatePath(`/customers/${customerId}/invoice`);
 }
 

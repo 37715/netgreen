@@ -3,8 +3,6 @@
 import { useState } from "react";
 import {
   setJobStatus,
-  setJobPayment,
-  completeJob,
   updateJobNotes,
   moveJob,
   deleteJob,
@@ -67,10 +65,7 @@ export function JobRow({
   onAssign?: (crewId: number | null) => void;
 }) {
   const done = job.status === "DONE";
-  const paid = !!job.paidAt;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [payMenuOpen, setPayMenuOpen] = useState(false);
-  const [tickMenuOpen, setTickMenuOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const canAssign = !!onAssign && (crewOptions?.length ?? 0) > 0;
 
@@ -140,80 +135,22 @@ export function JobRow({
           )}
         </div>
       )}
-      {/* Ticking off asks how it was paid, so cash and bank stay separated. */}
-      {done || job.price <= 0 ? (
-        <form action={setJobStatus} className="shrink-0">
-          <input type="hidden" name="id" value={job.id} />
-          <input type="hidden" name="status" value={done ? "SCHEDULED" : "DONE"} />
-          <button
-            type="submit"
-            aria-label={done ? "Mark not done" : "Mark done"}
-            className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 transition-colors ${
-              done
-                ? "border-lime-500 bg-lime-500 text-white"
-                : "border-stone-300 text-transparent hover:border-lime-500 active:bg-lime-100"
-            }`}
-          >
-            <CheckIcon className="h-5 w-5" />
-          </button>
-        </form>
-      ) : (
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setTickMenuOpen((o) => !o)}
-            aria-label="Mark done"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-stone-300 text-transparent transition-colors hover:border-lime-500 active:bg-lime-100"
-          >
-            <CheckIcon className="h-5 w-5" />
-          </button>
-          {tickMenuOpen && (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-10 cursor-default"
-                aria-label="Close"
-                onClick={() => setTickMenuOpen(false)}
-              />
-              <div className="absolute left-0 top-10 z-20 min-w-[170px] rounded-xl border border-stone-200 bg-white py-1 shadow-lg">
-                <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
-                  Done · paid by
-                </div>
-                {(
-                  [
-                    { method: "CASH", label: "Cash" },
-                    { method: "BANK", label: "Bank transfer" },
-                    { method: "UNPAID", label: "Not paid yet" },
-                  ] as const
-                ).map((opt) => (
-                  // Close after the action resolves — closing in onClick
-                  // unmounts the form before it submits, so nothing sends.
-                  <form
-                    key={opt.method}
-                    action={async (fd) => {
-                      await completeJob(fd);
-                      setTickMenuOpen(false);
-                    }}
-                  >
-                    <input type="hidden" name="id" value={job.id} />
-                    <input type="hidden" name="method" value={opt.method} />
-                    <button
-                      type="submit"
-                      className={`w-full px-3 py-2 text-left text-sm font-semibold hover:bg-stone-50 ${
-                        opt.method === "UNPAID"
-                          ? "text-stone-500"
-                          : "text-stone-700"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  </form>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* Just marks the work done — payments live on the Paid page. */}
+      <form action={setJobStatus} className="shrink-0">
+        <input type="hidden" name="id" value={job.id} />
+        <input type="hidden" name="status" value={done ? "SCHEDULED" : "DONE"} />
+        <button
+          type="submit"
+          aria-label={done ? "Mark not done" : "Mark done"}
+          className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 transition-colors ${
+            done
+              ? "border-lime-500 bg-lime-500 text-white"
+              : "border-stone-300 text-transparent hover:border-lime-500 active:bg-lime-100"
+          }`}
+        >
+          <CheckIcon className="h-5 w-5" />
+        </button>
+      </form>
 
       <div className="min-w-0 flex-1">
         <div
@@ -248,67 +185,6 @@ export function JobRow({
           </div>
         )}
       </div>
-
-      {done && job.price > 0 && (
-        <div className="relative shrink-0">
-          {paid ? (
-            <form action={setJobPayment}>
-              <input type="hidden" name="id" value={job.id} />
-              <input type="hidden" name="method" value="UNPAID" />
-              <button
-                type="submit"
-                title="Tap to mark unpaid"
-                className="rounded-lg bg-lime-100 px-2 py-1 text-[11px] font-bold text-lime-600"
-              >
-                Paid{job.paymentMethod ? ` · ${job.paymentMethod === "CASH" ? "cash" : "bank"}` : ""}
-              </button>
-            </form>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setPayMenuOpen((o) => !o)}
-                className="rounded-lg bg-clay-100 px-2 py-1 text-[11px] font-bold text-clay-600"
-              >
-                Due
-              </button>
-              {payMenuOpen && (
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-10 cursor-default"
-                    aria-label="Close"
-                    onClick={() => setPayMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-8 z-20 flex min-w-[120px] flex-col rounded-xl border border-stone-200 bg-white py-1 shadow-lg">
-                    <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">
-                      Paid by
-                    </div>
-                    {(["CASH", "BANK"] as const).map((m) => (
-                      <form
-                        key={m}
-                        action={async (fd) => {
-                          await setJobPayment(fd);
-                          setPayMenuOpen(false);
-                        }}
-                      >
-                        <input type="hidden" name="id" value={job.id} />
-                        <input type="hidden" name="method" value={m} />
-                        <button
-                          type="submit"
-                          className="w-full px-3 py-2 text-left text-sm font-semibold text-stone-700 hover:bg-stone-50"
-                        >
-                          {m === "CASH" ? "Cash" : "Bank transfer"}
-                        </button>
-                      </form>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
       <InlineJobPrice job={job} />
 

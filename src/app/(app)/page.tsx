@@ -168,7 +168,7 @@ export default async function DashboardPage({
             <span className="font-semibold text-white">
               {formatMoney(summary.profit, currency)}
             </span>{" "}
-            in {label} — across {summary.jobsDone} completed{" "}
+            in {label} — across {summary.jobsDone} paid{" "}
             {summary.jobsDone === 1 ? "job" : "jobs"}.
           </p>
           {summary.profit > 0 && settings.taxPotPercent > 0 && (

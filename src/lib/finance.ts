@@ -108,10 +108,14 @@ export function summarizeMoney(input: {
 
 /**
  * Cash-basis summary for a date range:
- *  revenue = completed quick jobs + project payments received
+ *  revenue = quick jobs actually PAID + project payments received
  *  costs   = overheads + project costs + extra crew + materials we paid for
  *            + revenue share owed on tagged customers' jobs
  *  profit  = revenue - costs
+ *
+ * Ticking a job "done" does nothing to the money here — a job only counts
+ * once it's been marked paid (cash or bank) on the Paid page. Doing the work
+ * and collecting the money are two separate steps.
  */
 export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummary> {
   const gte = startOfDay(from);
@@ -119,7 +123,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
 
   const [doneJobs, payments, overheads, projectCosts, labour] = await Promise.all([
     prisma.scheduledJob.findMany({
-      where: { status: "DONE", date: { gte, lte } },
+      where: { status: "DONE", paidAt: { not: null }, date: { gte, lte } },
       select: {
         price: true,
         wasteBags: true,
@@ -324,7 +328,7 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
 
   const [jobs, payments, overheads, projectCosts, labour] = await Promise.all([
     prisma.scheduledJob.findMany({
-      where: { status: "DONE", date: { gte, lte } },
+      where: { status: "DONE", paidAt: { not: null }, date: { gte, lte } },
       select: {
         date: true,
         price: true,

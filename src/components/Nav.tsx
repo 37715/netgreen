@@ -11,23 +11,28 @@ import {
   ProjectIcon,
   ReceiptIcon,
   SettingsIcon,
-  PoundIcon,
   LeafIcon,
 } from "@/components/icons";
 
 const links = [
-  { href: "/calendar", label: "Today", Icon: CalendarIcon },
+  // Jobs holds both the Work (to-do) and Paid sections, toggled at the top.
+  { href: "/calendar", label: "Jobs", Icon: CalendarIcon, also: ["/paid"] },
   { href: "/", label: "Money", Icon: HomeIcon, exact: true },
-  { href: "/paid", label: "Paid", Icon: PoundIcon },
   { href: "/projects", label: "Projects", Icon: ProjectIcon },
   { href: "/overheads", label: "Costs", Icon: ReceiptIcon },
   { href: "/customers", label: "Rounds", Icon: UsersIcon },
   { href: "/settings", label: "Setup", Icon: SettingsIcon },
 ];
 
-function isActive(pathname: string, href: string, exact?: boolean): boolean {
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(href + "/");
+function isActive(
+  pathname: string,
+  href: string,
+  exact?: boolean,
+  also?: string[]
+): boolean {
+  const match = (p: string) =>
+    exact ? pathname === p : pathname === p || pathname.startsWith(p + "/");
+  return match(href) || (also?.some((p) => match(p)) ?? false);
 }
 
 function Wordmark({ businessName }: { businessName: string }) {
@@ -56,8 +61,8 @@ export function Sidebar({ businessName }: { businessName: string }) {
         <Wordmark businessName={businessName} />
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {links.map(({ href, label, Icon, exact }) => {
-          const active = isActive(pathname, href, exact);
+        {links.map(({ href, label, Icon, exact, also }) => {
+          const active = isActive(pathname, href, exact, also);
           return (
             <Link
               key={href}
@@ -110,8 +115,8 @@ export function BottomNav() {
   return (
     <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       <div className="no-scrollbar flex snap-x snap-mandatory items-stretch gap-1.5 overflow-x-auto px-3 py-2">
-        {links.map(({ href, label, Icon, exact }) => {
-          const active = isActive(pathname, href, exact);
+        {links.map(({ href, label, Icon, exact, also }) => {
+          const active = isActive(pathname, href, exact, also);
           return (
             <Link
               key={href}

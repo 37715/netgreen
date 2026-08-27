@@ -14,6 +14,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { setJobStatus, setJobPayment, markCustomerJobsPaid } from "@/app/actions/jobs";
 import { Collapsible } from "@/components/Collapsible";
+import { JobsTabs } from "@/components/JobsTabs";
 import { ChevronLeftIcon, ChevronRightIcon, CheckIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +116,8 @@ export default async function PaidPage({
 
   return (
     <div className="space-y-4">
+      <JobsTabs date={toDateInput(selected)} />
+
       {/* Day picker */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

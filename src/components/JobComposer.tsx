@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { createJobFromCalendar } from "@/app/actions/jobs";
 import { computeHourlyPrice, computeWasteTotal, formatMoney } from "@/lib/money";
-import { PlusIcon } from "@/components/icons";
 
 type Crew = { id: number; name: string; colour: string };
 type CustomerHint = {
@@ -124,21 +123,11 @@ export function JobComposer({
         await createJobFromCalendar(fd);
         resetForm();
       }}
-      className="card p-4 sm:p-5"
     >
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="crewId" value={crewId} />
       <input type="hidden" name="repeat" value={repeat} />
       <input type="hidden" name="pricingType" value={pricingMode} />
-
-      <div className="flex items-center gap-2 mb-3">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-lime-500 text-white">
-          <PlusIcon className="h-4 w-4" />
-        </span>
-        <h2 className="font-display text-base font-bold text-brand-900">
-          Add a job
-        </h2>
-      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

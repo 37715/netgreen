@@ -28,6 +28,7 @@ import { MonthGrid, MonthDay } from "@/components/MonthGrid";
 import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
 import { JobsTabs } from "@/components/JobsTabs";
+import { Collapsible } from "@/components/Collapsible";
 import { DayCrewBar } from "@/components/DayCrewBar";
 import { RainBump } from "@/components/RainBump";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -224,12 +225,14 @@ async function DayView({
   return (
     <div className="space-y-4">
       <DayCrewBar date={dateStr} crews={crews} available={availableCrews} />
-      <JobComposer
-        date={dateStr}
-        crews={crews}
-        customers={customers}
-        defaultHourlyRate={settings.employeeRate}
-      />
+      <Collapsible label="Add a job">
+        <JobComposer
+          date={dateStr}
+          crews={crews}
+          customers={customers}
+          defaultHourlyRate={settings.employeeRate}
+        />
+      </Collapsible>
 
       {(() => {
         const stops = jobs

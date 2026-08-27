@@ -10,12 +10,14 @@ import {
   ProjectIcon,
   ReceiptIcon,
   SettingsIcon,
+  PoundIcon,
   LeafIcon,
 } from "@/components/icons";
 
 const links = [
   { href: "/calendar", label: "Today", Icon: CalendarIcon },
   { href: "/", label: "Money", Icon: HomeIcon, exact: true },
+  { href: "/paid", label: "Paid", Icon: PoundIcon },
   { href: "/projects", label: "Projects", Icon: ProjectIcon },
   { href: "/overheads", label: "Costs", Icon: ReceiptIcon },
   { href: "/customers", label: "Rounds", Icon: UsersIcon },
@@ -93,7 +95,7 @@ export function MobileHeader({ businessName }: { businessName: string }) {
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-6 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+    <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-7 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       {links.map(({ href, label, Icon, exact }) => {
         const active = isActive(pathname, href, exact);
         return (

@@ -165,6 +165,15 @@ export function CloudRainIcon({ className = base }: IconProps) {
   );
 }
 
+export function PoundIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
+      <path d="M14 9.2a2.4 2.4 0 0 0-4.3 1.5c0 2-.9 3.3-1.7 3.8h5.7M8.2 12.4h3.4" />
+    </svg>
+  );
+}
+
 export function LeafIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

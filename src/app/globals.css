@@ -178,3 +178,14 @@ body {
     @apply text-[11px] font-bold uppercase tracking-[0.14em] text-stone-500;
   }
 }
+
+@layer utilities {
+  /* Horizontal nav slider: scrolls without a visible scrollbar. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

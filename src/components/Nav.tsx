@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { SignOutButton } from "@/components/SignOutButton";
 import {
   HomeIcon,
@@ -94,26 +95,41 @@ export function MobileHeader({ businessName }: { businessName: string }) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  // Keep the current tab in view as you move around, so the slider always
+  // shows where you are even though the bar scrolls past the screen edge.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [pathname]);
+
   return (
-    <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-7 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-      {links.map(({ href, label, Icon, exact }) => {
-        const active = isActive(pathname, href, exact);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold ${
-              active ? "text-brand-800" : "text-stone-500"
-            }`}
-          >
-            {active && (
-              <span className="absolute top-0 h-0.5 w-8 rounded-full bg-lime-500" />
-            )}
-            <Icon className="h-5 w-5" />
-            {label}
-          </Link>
-        );
-      })}
+    <nav className="lg:hidden print:hidden fixed bottom-0 inset-x-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+      <div className="no-scrollbar flex snap-x snap-mandatory items-stretch gap-1.5 overflow-x-auto px-3 py-2">
+        {links.map(({ href, label, Icon, exact }) => {
+          const active = isActive(pathname, href, exact);
+          return (
+            <Link
+              key={href}
+              ref={active ? activeRef : null}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`flex min-w-[76px] shrink-0 snap-center flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition-colors ${
+                active
+                  ? "bg-brand-50 text-brand-800"
+                  : "text-stone-500 hover:bg-stone-100 active:bg-stone-100"
+              }`}
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

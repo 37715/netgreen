@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { materializeRecurring } from "@/lib/recurrence";
-import { formatMoney } from "@/lib/money";
 import {
   startOfDay,
   endOfDay,
@@ -28,6 +27,7 @@ import { WeekGrid, WeekDay, WeekCrew } from "@/components/WeekGrid";
 import { MonthGrid, MonthDay } from "@/components/MonthGrid";
 import { DayBoard, GroupInfo, BoardJob, LabourEntry } from "@/components/DayBoard";
 import { JobComposer } from "@/components/JobComposer";
+import { JobsTabs } from "@/components/JobsTabs";
 import { DayCrewBar } from "@/components/DayCrewBar";
 import { RainBump } from "@/components/RainBump";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -68,6 +68,7 @@ export default async function CalendarPage({
 
   return (
     <div>
+      <JobsTabs date={toDateInput(selected)} />
       <CalendarHeader selected={selected} view={view} />
       {view === "day" ? (
         <DayView selected={selected} customers={customers} />
@@ -200,23 +201,7 @@ async function DayView({
   ]);
   const currency = settings.currency;
 
-  const doneJobs = jobs.filter((j) => j.status === "DONE");
-  const doneCount = doneJobs.length;
-  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
-  const wages = labour.reduce((s, l) => s + l.amount, 0);
-  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
-  const costsToday = wages + materialsPaid;
-  const profit = takings - costsToday;
-
-  const cashToday = doneJobs
-    .filter((j) => j.paidAt && j.paymentMethod === "CASH")
-    .reduce((s, j) => s + j.price, 0);
-  const bankToday = doneJobs
-    .filter((j) => j.paidAt && j.paymentMethod === "BANK")
-    .reduce((s, j) => s + j.price, 0);
-  const dueToday = doneJobs
-    .filter((j) => !j.paidAt)
-    .reduce((s, j) => s + j.price, 0);
+  const doneCount = jobs.filter((j) => j.status === "DONE").length;
 
   const groups: GroupInfo[] = [
     ...crews,
@@ -269,50 +254,18 @@ async function DayView({
         );
       })()}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <TillTile label="Done" value={`${doneCount}/${jobs.length}`} />
-        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
-        <TillTile
-          label="Costs"
-          value={
-            costsToday > 0
-              ? `−${formatMoney(costsToday, currency)}`
-              : formatMoney(0, currency)
-          }
-          negative={costsToday > 0}
-        />
-        <TillTile
-          label="Profit today"
-          value={formatMoney(profit, currency)}
-          accent={profit >= 0}
-          negative={profit < 0}
-          sum
-        />
-      </div>
-
-      {takings > 0 && (
-        <div className="card flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <span className="eyebrow">Cashing up</span>
-          <CashUpItem
-            label="Cash"
-            value={formatMoney(cashToday, currency)}
-            dotClass="bg-lime-500"
-          />
-          <CashUpItem
-            label="Bank"
-            value={formatMoney(bankToday, currency)}
-            dotClass="bg-brand-700"
-          />
-          {dueToday > 0 && (
-            <CashUpItem
-              label="To collect"
-              value={formatMoney(dueToday, currency)}
-              dotClass="bg-clay-500"
-              alert
-            />
-          )}
+      <div className="stat-card flex items-center justify-between">
+        <div>
+          <div className="eyebrow">Done today</div>
+          <p className="mt-0.5 text-xs text-stone-500">
+            Money&rsquo;s tracked on the Paid tab.
+          </p>
         </div>
-      )}
+        <span className="ledger text-xl font-extrabold text-brand-900">
+          {doneCount}
+          <span className="text-stone-400">/{jobs.length}</span>
+        </span>
+      </div>
 
       <DayBoard
         date={dateStr}
@@ -336,7 +289,7 @@ async function WeekView({ selected }: { selected: Date }) {
   const weekEnd = endOfDay(addDays(weekStart, 6));
   await materializeRecurring(weekStart, weekEnd);
 
-  const [jobs, labour, settings] = await Promise.all([
+  const [jobs, settings] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { date: { gte: startOfDay(weekStart), lte: weekEnd } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -344,9 +297,6 @@ async function WeekView({ selected }: { selected: Date }) {
         customer: { select: { name: true } },
         crew: { select: { id: true, name: true, colour: true } },
       },
-    }),
-    prisma.crewLabour.findMany({
-      where: { date: { gte: startOfDay(weekStart), lte: weekEnd } },
     }),
     getSettings(),
   ]);
@@ -383,32 +333,16 @@ async function WeekView({ selected }: { selected: Date }) {
     }
   }
 
-  const doneJobs = jobs.filter((j) => j.status === "DONE");
-  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
-  const wages = labour.reduce((s, l) => s + l.amount, 0);
-  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
-  const costs = wages + materialsPaid;
-  const profit = takings - costs;
+  const doneCount = jobs.filter((j) => j.status === "DONE").length;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <TillTile label="Done" value={`${doneJobs.length}/${jobs.length}`} />
-        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
-        <TillTile
-          label="Costs"
-          value={
-            costs > 0 ? `−${formatMoney(costs, currency)}` : formatMoney(0, currency)
-          }
-          negative={costs > 0}
-        />
-        <TillTile
-          label="Profit this week"
-          value={formatMoney(profit, currency)}
-          accent={profit >= 0}
-          negative={profit < 0}
-          sum
-        />
+      <div className="stat-card flex items-center justify-between">
+        <div className="eyebrow">Done this week</div>
+        <span className="ledger text-xl font-extrabold text-brand-900">
+          {doneCount}
+          <span className="text-stone-400">/{jobs.length}</span>
+        </span>
       </div>
 
       <WeekGrid days={days} crews={weekCrews} currency={currency} />
@@ -456,7 +390,7 @@ async function MonthView({ selected }: { selected: Date }) {
   const gridEnd = addDays(startOfWeek(toStoredDay(monthEnd)), 6);
   await materializeRecurring(gridStart, gridEnd);
 
-  const [jobs, labour, settings] = await Promise.all([
+  const [jobs, settings] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { date: { gte: startOfDay(gridStart), lte: endOfDay(gridEnd) } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -464,9 +398,6 @@ async function MonthView({ selected }: { selected: Date }) {
         customer: { select: { name: true } },
         crew: { select: { id: true, name: true, colour: true } },
       },
-    }),
-    prisma.crewLabour.findMany({
-      where: { date: { gte: startOfDay(monthStart), lte: monthEnd } },
     }),
     getSettings(),
   ]);
@@ -488,32 +419,16 @@ async function MonthView({ selected }: { selected: Date }) {
   });
 
   const monthJobs = jobs.filter((j) => isSameMonth(j.date, monthStart));
-  const doneJobs = monthJobs.filter((j) => j.status === "DONE");
-  const takings = doneJobs.reduce((s, j) => s + j.price, 0);
-  const wages = labour.reduce((s, l) => s + l.amount, 0);
-  const materialsPaid = doneJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
-  const costs = wages + materialsPaid;
-  const profit = takings - costs;
+  const doneCount = monthJobs.filter((j) => j.status === "DONE").length;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <TillTile label="Done" value={`${doneJobs.length}/${monthJobs.length}`} />
-        <TillTile label="Takings" value={formatMoney(takings, currency)} accent />
-        <TillTile
-          label="Costs"
-          value={
-            costs > 0 ? `−${formatMoney(costs, currency)}` : formatMoney(0, currency)
-          }
-          negative={costs > 0}
-        />
-        <TillTile
-          label="Profit this month"
-          value={formatMoney(profit, currency)}
-          accent={profit >= 0}
-          negative={profit < 0}
-          sum
-        />
+      <div className="stat-card flex items-center justify-between">
+        <div className="eyebrow">Done this month</div>
+        <span className="ledger text-xl font-extrabold text-brand-900">
+          {doneCount}
+          <span className="text-stone-400">/{monthJobs.length}</span>
+        </span>
       </div>
 
       <MonthGrid
@@ -525,65 +440,3 @@ async function MonthView({ selected }: { selected: Date }) {
   );
 }
 
-function CashUpItem({
-  label,
-  value,
-  dotClass,
-  alert,
-}: {
-  label: string;
-  value: string;
-  dotClass: string;
-  alert?: boolean;
-}) {
-  return (
-    <span className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
-      <span className="text-xs font-semibold text-stone-600">{label}</span>
-      <span
-        className={`ledger text-sm font-extrabold ${
-          alert ? "text-clay-600" : "text-stone-900"
-        }`}
-      >
-        {value}
-      </span>
-    </span>
-  );
-}
-
-function TillTile({
-  label,
-  value,
-  accent,
-  muted,
-  negative,
-  sum,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  muted?: boolean;
-  negative?: boolean;
-  sum?: boolean;
-}) {
-  return (
-    <div className="stat-card">
-      <div className="eyebrow">{label}</div>
-      <div className="mt-1">
-        <span
-          className={`ledger text-lg sm:text-xl font-extrabold ${sum ? "sum" : ""} ${
-            negative
-              ? "text-clay-600"
-              : accent
-                ? "text-brand-700"
-                : muted
-                  ? "text-stone-400"
-                  : "text-stone-900"
-          }`}
-        >
-          {value}
-        </span>
-      </div>
-    </div>
-  );
-}

@@ -52,8 +52,10 @@ export function JobRow({
   crewOptions,
   currentCrewId,
   onAssign,
+  defaultBagPrice,
 }: {
   job: JobRowData;
+  defaultBagPrice?: number;
   isFirst: boolean;
   isLast: boolean;
   draggable?: boolean;
@@ -186,7 +188,7 @@ export function JobRow({
         )}
       </div>
 
-      <InlineJobPrice job={job} />
+      <InlineJobPrice job={job} defaultBagPrice={defaultBagPrice} />
 
       <div className="flex shrink-0 items-center text-stone-300">
         <button

@@ -6,6 +6,7 @@ import {
   getPaymentSplit,
   getRevenueShareWeeks,
   getYearMonths,
+  getMaterialsLines,
   projectTotals,
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
@@ -18,6 +19,7 @@ import {
   addDays,
   addMonths,
   endOfDay,
+  formatDayLabel,
 } from "@/lib/dates";
 import { MarginBadge } from "@/components/ui";
 import { StillOwed, type OwedItem } from "@/components/StillOwed";
@@ -64,9 +66,18 @@ export default async function DashboardPage({
   // you never open the Costs tab.
   await materializeOverheads();
 
-  const [summary, split, projects, debts, shareDeals, yearMonths] = await Promise.all([
+  const [
+    summary,
+    split,
+    materialsLines,
+    projects,
+    debts,
+    shareDeals,
+    yearMonths,
+  ] = await Promise.all([
     getRangeSummary(from, to),
     getPaymentSplit(from, to),
+    getMaterialsLines(from, to),
     prisma.project.findMany({
       include: { costs: true, payments: true, customer: true },
       orderBy: { createdAt: "desc" },
@@ -287,6 +298,35 @@ export default async function DashboardPage({
               value={formatMoney(summary.materialsPaid, currency)}
             />
           </dl>
+
+          {materialsLines.length > 0 && (
+            <div className="mt-4 border-t border-stone-100 pt-3">
+              <div className="eyebrow">Which jobs</div>
+              <ul className="mt-2 space-y-2">
+                {materialsLines.map((m) => (
+                  <li
+                    key={m.jobId}
+                    className="flex items-baseline justify-between gap-3 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="font-medium text-stone-700">{m.title}</span>
+                      <span className="ml-1.5 text-xs text-stone-400">
+                        {formatDayLabel(m.date)}
+                        {m.note ? ` · ${m.note}` : ""}
+                      </span>
+                    </span>
+                    <span className="ledger shrink-0 text-xs text-stone-600">
+                      {formatMoney(m.charged, currency)} in ·{" "}
+                      {formatMoney(m.paid, currency)} out
+                      {m.charged > 0 && m.paid === 0 && (
+                        <span className="ml-1 text-clay-600">· nothing logged as paid</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

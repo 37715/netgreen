@@ -12,10 +12,17 @@ export async function updateSettings(formData: FormData) {
     100,
     Math.max(0, parseAmount(formData.get("taxPotPercent")))
   );
+  const wasteBagPrice = Math.max(0, parseAmount(formData.get("wasteBagPrice")));
   await prisma.settings.upsert({
     where: { id: 1 },
-    update: { businessName, employeeRate, taxPotPercent },
-    create: { id: 1, businessName, employeeRate, taxPotPercent },
+    update: { businessName, employeeRate, taxPotPercent, wasteBagPrice },
+    create: {
+      id: 1,
+      businessName,
+      employeeRate,
+      taxPotPercent,
+      wasteBagPrice,
+    },
   });
   revalidatePath("/", "layout");
 }

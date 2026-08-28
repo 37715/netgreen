@@ -1,7 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { parseAmount, computeHourlyPrice, computeWasteTotal } from "@/lib/money";
+import { parseAmount, computeHourlyPrice } from "@/lib/money";
+import { resolveWaste } from "@/lib/waste";
+import { getSettings } from "@/lib/settings";
 import { fromDateInput, startOfDay, endOfDay, toStoredDay } from "@/lib/dates";
 import { PricingType, Recurrence } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -18,7 +20,7 @@ async function nextSortOrder(date: Date, crewId: number | null): Promise<number>
   return (last?.sortOrder ?? -1) + 1;
 }
 
-function readExtras(formData: FormData): {
+async function readExtras(formData: FormData): Promise<{
   wasteBags: number | null;
   wasteBagPrice: number | null;
   wasteTotal: number;
@@ -26,11 +28,13 @@ function readExtras(formData: FormData): {
   materialsPaid: number | null;
   materialsNote: string;
   materialsChargeTotal: number;
-} {
-  const wasteBags = Math.max(0, Math.round(parseAmount(formData.get("wasteBags"))));
-  const wasteBagPrice = parseAmount(formData.get("wasteBagPrice"));
-  const hasWaste = wasteBags > 0 && wasteBagPrice > 0;
-  const wasteTotal = hasWaste ? computeWasteTotal(wasteBags, wasteBagPrice) : 0;
+}> {
+  const settings = await getSettings();
+  const waste = resolveWaste(
+    parseAmount(formData.get("wasteBags")),
+    parseAmount(formData.get("wasteBagPrice")),
+    settings.wasteBagPrice
+  );
 
   // Accept legacy field name from older forms.
   const chargeRaw = parseAmount(
@@ -43,9 +47,9 @@ function readExtras(formData: FormData): {
   const materialsPaidTotal = paidRaw > 0 ? Math.round(paidRaw * 100) / 100 : 0;
 
   return {
-    wasteBags: hasWaste ? wasteBags : null,
-    wasteBagPrice: hasWaste ? wasteBagPrice : null,
-    wasteTotal,
+    wasteBags: waste.bags,
+    wasteBagPrice: waste.pricePerBag,
+    wasteTotal: waste.total,
     materialsCharge: hasMaterials && materialsChargeTotal > 0 ? materialsChargeTotal : null,
     materialsPaid: hasMaterials && materialsPaidTotal > 0 ? materialsPaidTotal : null,
     materialsNote: hasMaterials ? materialsNote : "",
@@ -53,7 +57,7 @@ function readExtras(formData: FormData): {
   };
 }
 
-function readJobPrice(formData: FormData): {
+async function readJobPrice(formData: FormData): Promise<{
   price: number;
   basePrice: number;
   pricingType: PricingType;
@@ -65,12 +69,12 @@ function readJobPrice(formData: FormData): {
   materialsCharge: number | null;
   materialsPaid: number | null;
   materialsNote: string;
-} {
+}> {
   const pricingType = (
     String(formData.get("pricingType") || "FIXED") === "HOURLY" ? "HOURLY" : "FIXED"
   ) as PricingType;
 
-  const extras = readExtras(formData);
+  const extras = await readExtras(formData);
   const addOns = extras.wasteTotal + extras.materialsChargeTotal;
 
   if (pricingType === "HOURLY") {
@@ -123,7 +127,7 @@ export async function createJobFromCalendar(formData: FormData) {
   const customerAddress = String(formData.get("customerAddress") || "").trim();
   const what = String(formData.get("title") || "").trim();
   const repeat = String(formData.get("repeat") || "NONE") as Recurrence;
-  const pricing = readJobPrice(formData);
+  const pricing = await readJobPrice(formData);
   // Seed recurring-round defaults from the base price only — waste/materials are
   // one-off, per-visit extras and shouldn't stick to the customer's usual price.
   const { basePrice: price } = pricing;
@@ -338,28 +342,6 @@ export async function markCustomerJobsPaid(formData: FormData) {
   revalidatePath(`/customers/${customerId}/invoice`);
 }
 
-/** Quick total overwrite (legacy). Prefer updateJobExtras for labour + add-ons. */
-export async function updateJobPrice(formData: FormData) {
-  const id = Number(formData.get("id"));
-  await prisma.scheduledJob.update({
-    where: { id },
-    data: {
-      price: parseAmount(formData.get("price")),
-      pricingType: "FIXED",
-      hourlyRate: null,
-      hours: null,
-      workers: null,
-      wasteBags: null,
-      wasteBagPrice: null,
-      materialsCharge: null,
-      materialsPaid: null,
-      materialsNote: "",
-    },
-  });
-  revalidatePath("/calendar");
-  revalidatePath("/");
-}
-
 /**
  * Edit labour + waste + materials on an existing job. Total price is recomputed.
  * Keeps hourly breakdown when the job is still hourly and labour wasn't overridden.
@@ -371,7 +353,7 @@ export async function updateJobExtras(formData: FormData) {
   const job = await prisma.scheduledJob.findUnique({ where: { id } });
   if (!job) return;
 
-  const extras = readExtras(formData);
+  const extras = await readExtras(formData);
   const addOns = extras.wasteTotal + extras.materialsChargeTotal;
   const labourInput = String(formData.get("labour") ?? "");
   const labour = labourInput === "" ? null : parseAmount(labourInput);

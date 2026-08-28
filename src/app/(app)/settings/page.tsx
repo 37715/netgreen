@@ -55,6 +55,22 @@ export default async function SettingsPage() {
               className="input"
             />
           </div>
+          <div>
+            <label className="label">Waste removal (£ per bag)</label>
+            <input
+              name="wasteBagPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              inputMode="decimal"
+              defaultValue={settings.wasteBagPrice}
+              className="input"
+            />
+            <p className="mt-1 text-xs text-stone-500">
+              Used when you log bags on a job without typing a price, so waste
+              never gets missed. You can still override it per job.
+            </p>
+          </div>
           <div className="sm:col-span-2">
             <button className="btn-primary">Save</button>
           </div>

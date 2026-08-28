@@ -17,6 +17,8 @@ model Settings {
   employeeRate Float    @default(20)
   // % of profit to set aside for self-assessment tax.
   taxPotPercent Float   @default(20)
+  // Fallback £/bag so waste entered as bags alone still earns money.
+  wasteBagPrice Float   @default(8)
   currency     String   @default("GBP")
   updatedAt    DateTime @updatedAt
 }

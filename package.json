@@ -7,7 +7,7 @@
     "build": "prisma generate && prisma db push --skip-generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/finance.test.ts src/lib/dates.test.ts src/lib/overhead-recurrence.test.ts",
+    "test": "tsx --test src/lib/finance.test.ts src/lib/dates.test.ts src/lib/overhead-recurrence.test.ts src/lib/waste.test.ts",
     "seed": "tsx prisma/seed.ts",
     "wipe": "tsx scripts/wipe.ts",
     "db:push": "prisma db push",

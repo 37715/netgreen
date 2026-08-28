@@ -231,6 +231,7 @@ async function DayView({
           crews={crews}
           customers={customers}
           defaultHourlyRate={settings.employeeRate}
+          defaultBagPrice={settings.wasteBagPrice}
         />
       </Collapsible>
 
@@ -277,6 +278,7 @@ async function DayView({
         labour={labourEntries}
         currency={currency}
         defaultRate={settings.employeeRate}
+        defaultBagPrice={settings.wasteBagPrice}
       />
 
       <RainBump

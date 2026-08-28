@@ -164,6 +164,52 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   });
 }
 
+export type MaterialsLine = {
+  jobId: number;
+  date: Date;
+  title: string;
+  note: string;
+  charged: number;
+  paid: number;
+};
+
+/**
+ * The jobs behind the materials figures, so the total is never a mystery.
+ * Matches getRangeSummary: only jobs that have actually been paid count.
+ */
+export async function getMaterialsLines(
+  from: Date,
+  to: Date
+): Promise<MaterialsLine[]> {
+  const jobs = await prisma.scheduledJob.findMany({
+    where: {
+      status: "DONE",
+      paidAt: { not: null },
+      date: { gte: startOfDay(from), lte: endOfDay(to) },
+      OR: [{ materialsCharge: { gt: 0 } }, { materialsPaid: { gt: 0 } }],
+    },
+    orderBy: { date: "asc" },
+    select: {
+      id: true,
+      date: true,
+      title: true,
+      materialsNote: true,
+      materialsCharge: true,
+      materialsPaid: true,
+      customer: { select: { name: true } },
+    },
+  });
+
+  return jobs.map((j) => ({
+    jobId: j.id,
+    date: j.date,
+    title: j.customer?.name || j.title || "Job",
+    note: j.materialsNote ?? "",
+    charged: j.materialsCharge ?? 0,
+    paid: j.materialsPaid ?? 0,
+  }));
+}
+
 export type YearMonthCost = {
   label: string;
   amount: number;

@@ -28,7 +28,13 @@ function labourFromJob(job: JobPriceExtras): number {
 }
 
 /** Compact total with a sheet to edit labour, waste, and materials. */
-export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
+export function InlineJobPrice({
+  job,
+  defaultBagPrice = 0,
+}: {
+  job: JobPriceExtras;
+  defaultBagPrice?: number;
+}) {
   const [open, setOpen] = useState(false);
   const initialLabour = labourFromJob(job);
   const hasWaste = (job.wasteBags ?? 0) > 0 && (job.wasteBagPrice ?? 0) > 0;
@@ -51,6 +57,15 @@ export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
     hasMaterials && job.materialsPaid ? String(job.materialsPaid) : ""
   );
   const [materialsNote, setMaterialsNote] = useState(job.materialsNote ?? "");
+
+  /** Turning waste on fills the usual rate so bags never go in priceless. */
+  function toggleWaste() {
+    const next = !wasteOn;
+    if (next && !wasteBagPrice && defaultBagPrice > 0) {
+      setWasteBagPrice(String(defaultBagPrice));
+    }
+    setWasteOn(next);
+  }
 
   const wasteTotal = useMemo(() => {
     if (!wasteOn) return 0;
@@ -164,7 +179,7 @@ export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
                   <span className="label mb-0">Waste removal</span>
                   <button
                     type="button"
-                    onClick={() => setWasteOn((v) => !v)}
+                    onClick={toggleWaste}
                     className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
                       wasteOn
                         ? "border-lime-500 bg-lime-100 text-lime-600"
@@ -199,6 +214,7 @@ export function InlineJobPrice({ job }: { job: JobPriceExtras }) {
                         inputMode="decimal"
                         value={wasteBagPrice}
                         onChange={(e) => setWasteBagPrice(e.target.value)}
+                        placeholder={defaultBagPrice > 0 ? String(defaultBagPrice) : undefined}
                         className="input !py-1.5 text-sm"
                       />
                     </div>

@@ -30,6 +30,7 @@ export function DayBoard({
   labour,
   currency,
   defaultRate,
+  defaultBagPrice,
 }: {
   date: string;
   groups: GroupInfo[];
@@ -37,6 +38,7 @@ export function DayBoard({
   labour: LabourEntry[];
   currency: string;
   defaultRate: number;
+  defaultBagPrice: number;
 }) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
@@ -130,6 +132,7 @@ export function DayBoard({
                     crewOptions={crewOptions}
                     currentCrewId={g.id}
                     onAssign={(crewId) => move(j.id, crewId)}
+                    defaultBagPrice={defaultBagPrice}
                   />
                 ))}
               </div>

@@ -28,11 +28,13 @@ export function JobComposer({
   crews,
   customers,
   defaultHourlyRate,
+  defaultBagPrice = 0,
 }: {
   date: string;
   crews: Crew[];
   customers: CustomerHint[];
   defaultHourlyRate: number;
+  defaultBagPrice?: number;
 }) {
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
@@ -64,6 +66,15 @@ export function JobComposer({
     const h = parseFloat(hours) || 0;
     return computeHourlyPrice(w, r, h);
   }, [workers, hourlyRate, hours]);
+
+  /** Turning waste on fills the usual rate so bags never go in priceless. */
+  function toggleWaste() {
+    const next = !wasteOn;
+    if (next && !wasteBagPrice && defaultBagPrice > 0) {
+      setWasteBagPrice(String(defaultBagPrice));
+    }
+    setWasteOn(next);
+  }
 
   const wasteTotal = useMemo(() => {
     if (!wasteOn) return 0;
@@ -267,7 +278,7 @@ export function JobComposer({
               <span className="label mb-0">Waste removal</span>
               <button
                 type="button"
-                onClick={() => setWasteOn((v) => !v)}
+                onClick={toggleWaste}
                 className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors ${
                   wasteOn
                     ? "border-lime-500 bg-lime-100 text-lime-600"
@@ -304,7 +315,7 @@ export function JobComposer({
                     inputMode="decimal"
                     value={wasteBagPrice}
                     onChange={(e) => setWasteBagPrice(e.target.value)}
-                    placeholder="e.g. 5"
+                    placeholder={defaultBagPrice > 0 ? String(defaultBagPrice) : "e.g. 5"}
                     className="input"
                   />
                 </div>

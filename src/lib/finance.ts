@@ -429,7 +429,10 @@ export type PaymentSplit = {
   jobCashCount: number;
   jobBank: number;
   jobBankCount: number;
-  /** Done jobs with nothing collected yet. */
+  /** Paid, but nobody said how — counts as revenue, just not as cash or bank. */
+  jobPaidUnknown: number;
+  jobPaidUnknownCount: number;
+  /** Done jobs with nothing collected yet. Not in revenue. */
   jobDue: number;
   jobDueCount: number;
   /** Project payments, bucketed from their free-text method. */
@@ -477,25 +480,16 @@ export async function getPaymentSplit(
     }),
   ]);
 
-  let jobCash = 0;
-  let jobCashCount = 0;
-  let jobBank = 0;
-  let jobBankCount = 0;
-  let jobDue = 0;
-  let jobDueCount = 0;
-
-  for (const j of jobs) {
-    if (j.paidAt && j.paymentMethod === "CASH") {
-      jobCash += j.price;
-      jobCashCount += 1;
-    } else if (j.paidAt && j.paymentMethod === "BANK") {
-      jobBank += j.price;
-      jobBankCount += 1;
-    } else if (j.price > 0) {
-      jobDue += j.price;
-      jobDueCount += 1;
-    }
-  }
+  const {
+    jobCash,
+    jobCashCount,
+    jobBank,
+    jobBankCount,
+    jobPaidUnknown,
+    jobPaidUnknownCount,
+    jobDue,
+    jobDueCount,
+  } = splitJobPayments(jobs);
 
   let projectCash = 0;
   let projectBank = 0;
@@ -509,12 +503,15 @@ export async function getPaymentSplit(
 
   const cash = jobCash + projectCash;
   const bank = jobBank + projectBank;
+  const other = projectOther + jobPaidUnknown;
 
   return {
     jobCash,
     jobCashCount,
     jobBank,
     jobBankCount,
+    jobPaidUnknown,
+    jobPaidUnknownCount,
     jobDue,
     jobDueCount,
     projectCash,
@@ -522,8 +519,54 @@ export async function getPaymentSplit(
     projectOther,
     cash,
     bank,
-    other: projectOther,
-    collected: cash + bank + projectOther,
+    other,
+    // Everything the books count as taken, so this matches Money's revenue.
+    collected: cash + bank + other,
+  };
+}
+
+/**
+ * Bucket job takings by how the money arrived. A job that's been marked paid
+ * without a method is still money in — it just can't be filed as cash or bank,
+ * so it must not sit in the same pile as jobs nobody has paid for.
+ */
+export function splitJobPayments(
+  jobs: { price: number; paidAt: Date | null; paymentMethod: string | null }[]
+) {
+  let jobCash = 0;
+  let jobCashCount = 0;
+  let jobBank = 0;
+  let jobBankCount = 0;
+  let jobPaidUnknown = 0;
+  let jobPaidUnknownCount = 0;
+  let jobDue = 0;
+  let jobDueCount = 0;
+
+  for (const j of jobs) {
+    if (j.paidAt && j.paymentMethod === "CASH") {
+      jobCash += j.price;
+      jobCashCount += 1;
+    } else if (j.paidAt && j.paymentMethod === "BANK") {
+      jobBank += j.price;
+      jobBankCount += 1;
+    } else if (j.paidAt && j.price > 0) {
+      jobPaidUnknown += j.price;
+      jobPaidUnknownCount += 1;
+    } else if (j.price > 0) {
+      jobDue += j.price;
+      jobDueCount += 1;
+    }
+  }
+
+  return {
+    jobCash,
+    jobCashCount,
+    jobBank,
+    jobBankCount,
+    jobPaidUnknown,
+    jobPaidUnknownCount,
+    jobDue,
+    jobDueCount,
   };
 }
 

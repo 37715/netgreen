@@ -103,20 +103,38 @@ export function TakingsSplit({
         </dl>
       )}
 
-      {split.jobDue > 0 && (
+      {split.jobPaidUnknown > 0 && (
         <div className="mt-3 rounded-xl bg-stone-50 px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-stone-700">
-              No method recorded · {split.jobDueCount}{" "}
-              {split.jobDueCount === 1 ? "job" : "jobs"}
+              Paid, method not recorded · {split.jobPaidUnknownCount}{" "}
+              {split.jobPaidUnknownCount === 1 ? "job" : "jobs"}
             </span>
             <span className="ledger shrink-0 text-sm font-bold text-stone-600">
+              {formatMoney(split.jobPaidUnknown, currency)}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-stone-500">
+            Counted in revenue above, but it can&apos;t be filed as cash or bank.
+            Set it on the Paid tab and it moves into the split.
+          </p>
+        </div>
+      )}
+
+      {split.jobDue > 0 && (
+        <div className="mt-3 rounded-xl bg-clay-50 px-3.5 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-stone-700">
+              Still to collect · {split.jobDueCount}{" "}
+              {split.jobDueCount === 1 ? "job" : "jobs"}
+            </span>
+            <span className="ledger shrink-0 text-sm font-bold text-clay-600">
               {formatMoney(split.jobDue, currency)}
             </span>
           </div>
           <p className="mt-1 text-xs text-stone-500">
-            Tick jobs off with Cash or Bank and they land in the split above.
-            Tap the Due badge on any finished job to set it after the fact.
+            Work that&rsquo;s done but unpaid. It stays out of revenue until the
+            money actually arrives.
           </p>
         </div>
       )}

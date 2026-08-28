@@ -5,7 +5,42 @@ import {
   projectTotals,
   revenueShareCostForJobs,
   bucketYearMonths,
+  splitJobPayments,
 } from "./finance";
+
+describe("splitJobPayments", () => {
+  const day = fromDateInput("2026-08-20");
+
+  it("keeps paid-but-no-method out of the still-to-collect pile", () => {
+    const s = splitJobPayments([
+      { price: 100, paidAt: day, paymentMethod: "CASH" },
+      { price: 200, paidAt: day, paymentMethod: "BANK" },
+      { price: 50, paidAt: day, paymentMethod: null },
+      { price: 70, paidAt: null, paymentMethod: null },
+    ]);
+
+    assert.equal(s.jobCash, 100);
+    assert.equal(s.jobBank, 200);
+    assert.equal(s.jobPaidUnknown, 50);
+    assert.equal(s.jobPaidUnknownCount, 1);
+    assert.equal(s.jobDue, 70);
+    assert.equal(s.jobDueCount, 1);
+  });
+
+  it("adds up to the money that was actually taken", () => {
+    const jobs = [
+      { price: 100, paidAt: day, paymentMethod: "CASH" },
+      { price: 50, paidAt: day, paymentMethod: null },
+      { price: 70, paidAt: null, paymentMethod: null },
+    ];
+    const s = splitJobPayments(jobs);
+    const paidRevenue = jobs
+      .filter((j) => j.paidAt)
+      .reduce((sum, j) => sum + j.price, 0);
+
+    assert.equal(s.jobCash + s.jobBank + s.jobPaidUnknown, paidRevenue);
+  });
+});
 
 describe("projectTotals", () => {
   it("does not let a reimbursable cost hit profit", () => {

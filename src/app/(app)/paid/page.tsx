@@ -43,7 +43,7 @@ export default async function PaidPage({
   const settings = await getSettings();
   const currency = settings.currency;
 
-  const [dayJobs, owedJobs] = await Promise.all([
+  const [dayJobs, owedJobs, dayLabour] = await Promise.all([
     prisma.scheduledJob.findMany({
       where: { date: { gte: startOfDay(selected), lte: endOfDay(selected) } },
       select: {
@@ -51,6 +51,7 @@ export default async function PaidPage({
         date: true,
         title: true,
         price: true,
+        materialsPaid: true,
         status: true,
         paidAt: true,
         paymentMethod: true,
@@ -73,16 +74,26 @@ export default async function PaidPage({
       },
       orderBy: { date: "asc" },
     }),
+    // Extra hands paid on this day — a real cost that comes out of the takings.
+    prisma.crewLabour.findMany({
+      where: { date: { gte: startOfDay(selected), lte: endOfDay(selected) } },
+      select: { amount: true },
+    }),
   ]);
 
   const incomeJobs = dayJobs.filter((j) => j.price > 0);
   const worked = dayJobs
     .filter((j) => j.status === "DONE")
     .reduce((s, j) => s + j.price, 0);
-  const collected = dayJobs
-    .filter((j) => j.paidAt)
-    .reduce((s, j) => s + j.price, 0);
+  const paidJobs = dayJobs.filter((j) => j.paidAt);
+  const collected = paidJobs.reduce((s, j) => s + j.price, 0);
   const outstanding = worked - collected;
+
+  // What today actually made: money collected, minus the wages you paid the
+  // extra hands and any materials you bought for the jobs you got paid for.
+  const wages = dayLabour.reduce((s, l) => s + l.amount, 0);
+  const materials = paidJobs.reduce((s, j) => s + (j.materialsPaid ?? 0), 0);
+  const profit = collected - wages - materials;
 
   // Group the all-time owed jobs by customer (plus a no-customer bucket).
   const groups = new Map<
@@ -158,6 +169,25 @@ export default async function PaidPage({
           value={formatMoney(outstanding, currency)}
           negative={outstanding > 0}
         />
+      </div>
+
+      {/* What you actually made today, after paying the extra hands */}
+      <div className="card flex items-center justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <div className="eyebrow">Profit {isToday ? "today" : "that day"}</div>
+          <p className="mt-0.5 text-xs text-stone-500">
+            Collected {formatMoney(collected, currency)}
+            {wages > 0 && ` − wages ${formatMoney(wages, currency)}`}
+            {materials > 0 && ` − materials ${formatMoney(materials, currency)}`}
+          </p>
+        </div>
+        <span
+          className={`ledger sum shrink-0 text-2xl font-extrabold ${
+            profit >= 0 ? "text-brand-700" : "text-clay-600"
+          }`}
+        >
+          {formatMoney(profit, currency)}
+        </span>
       </div>
 
       {/* The day's jobs */}

@@ -156,14 +156,14 @@ export function JobRow({
 
       <div className="min-w-0 flex-1">
         <div
-          className={`truncate text-sm font-semibold ${
+          className={`break-words text-sm font-semibold ${
             done ? "text-stone-400 line-through" : "text-stone-900"
           }`}
         >
           {job.title}
         </div>
         {(job.customer || job.pricingType === "HOURLY") && (
-          <div className="truncate text-xs text-stone-400">
+          <div className="break-words text-xs text-stone-400">
             {job.customer && (
               <>
                 {job.customer.name}
@@ -239,7 +239,7 @@ export function JobRow({
     </div>
 
     {!notesOpen && job.notes && (
-      <p className="mt-1 ml-11 truncate text-xs text-stone-400">{job.notes}</p>
+      <p className="mt-1 ml-11 break-words text-xs text-stone-400">{job.notes}</p>
     )}
     {notesOpen && (
       <form

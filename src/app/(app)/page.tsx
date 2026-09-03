@@ -182,6 +182,21 @@ export default async function DashboardPage({
             in {label} — across {summary.jobsDone} paid{" "}
             {summary.jobsDone === 1 ? "job" : "jobs"}.
           </p>
+
+          <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
+            <HeroStat label={`Revenue · ${label}`} value={formatMoney(summary.revenue, currency)} />
+            {split.jobDue > 0 && (
+              <HeroStat
+                label="Still to be paid"
+                value={formatMoney(split.jobDue, currency)}
+                tone="pending"
+                hint={`${split.jobDueCount} ${
+                  split.jobDueCount === 1 ? "job" : "jobs"
+                } done — lands in profit once ticked paid`}
+              />
+            )}
+          </div>
+
           {summary.profit > 0 && settings.taxPotPercent > 0 && (
             <p className="mt-2 text-xs text-brand-200">
               Tax pot ({settings.taxPotPercent.toFixed(0)}%): put aside{" "}
@@ -373,6 +388,38 @@ export default async function DashboardPage({
 
         <StillOwed items={owedItems} total={totalOutstanding} currency={currency} />
       </div>
+    </div>
+  );
+}
+
+function HeroStat({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone?: "good" | "pending";
+  hint?: string;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-200">
+        {label}
+      </div>
+      <div
+        className={`ledger text-2xl font-extrabold ${
+          tone === "good"
+            ? "text-lime-400"
+            : tone === "pending"
+              ? "text-amber-300"
+              : "text-white"
+        }`}
+      >
+        {value}
+      </div>
+      {hint && <div className="mt-0.5 max-w-[16rem] text-[11px] text-brand-200">{hint}</div>}
     </div>
   );
 }

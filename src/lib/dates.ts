@@ -176,3 +176,68 @@ export function formatWeekRange(from: Date, to: Date): string {
   const left = a.m === b.m ? `${a.d}` : `${a.d} ${MONTHS[a.m - 1]}`;
   return `${left} – ${b.d} ${MONTHS[b.m - 1]}`;
 }
+
+export type MoneyRangeKey = "week" | "month" | "year";
+
+/** Parse YYYY-MM-DD from a URL, or fall back to today if missing/invalid. */
+export function parseDateParam(value?: string | null, now = new Date()): Date {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = fromDateInput(value);
+    if (toDateInput(parsed) === value) return parsed;
+  }
+  return toStoredDay(now);
+}
+
+/** Week / month / year bounds for the Money dashboard, keyed off a selected day. */
+export function resolveMoneyRange(
+  key: MoneyRangeKey,
+  selected: Date
+): { from: Date; to: Date; label: string } {
+  if (key === "week") {
+    const from = startOfWeek(selected);
+    const weekEnd = addDays(from, 6);
+    const year = partsFromKey(calendarDayKey(from)).y;
+    return {
+      from,
+      to: endOfDay(weekEnd),
+      label: `${formatWeekRange(from, weekEnd)} ${year}`,
+    };
+  }
+  if (key === "year") {
+    const from = startOfYear(selected);
+    return {
+      from,
+      to: endOfMonth(addMonths(from, 11)),
+      label: String(partsFromKey(calendarDayKey(from)).y),
+    };
+  }
+  const from = startOfMonth(selected);
+  return { from, to: endOfMonth(from), label: formatMonthYear(from) };
+}
+
+/** Previous / next week or month, always landing on that period's start. */
+export function shiftMoneyPeriod(
+  key: "week" | "month",
+  selected: Date,
+  direction: -1 | 1
+): Date {
+  if (key === "week") return addDays(startOfWeek(selected), direction * 7);
+  return addMonths(startOfMonth(selected), direction);
+}
+
+export function isCurrentMoneyPeriod(
+  key: MoneyRangeKey,
+  selected: Date,
+  now = new Date()
+): boolean {
+  if (key === "week") {
+    return isSameDay(startOfWeek(selected), startOfWeek(now));
+  }
+  if (key === "year") {
+    return (
+      partsFromKey(calendarDayKey(selected)).y ===
+      partsFromKey(calendarDayKey(now)).y
+    );
+  }
+  return isSameMonth(selected, now);
+}

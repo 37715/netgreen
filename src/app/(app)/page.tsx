@@ -41,7 +41,8 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const rangeKey = parseRange(sp.range);
-  const selected = parseDateParam(sp.date);
+  const selected =
+    rangeKey === "year" ? parseDateParam(undefined) : parseDateParam(sp.date);
   const { from, to, label } = resolveMoneyRange(rangeKey, selected);
 
   const settings = await getSettings();
@@ -73,7 +74,7 @@ export default async function DashboardPage({
     }),
     // Revenue share always runs on calendar weeks, not the range picker above.
     getRevenueShareWeeks({ weeksBack: 8 }),
-    rangeKey === "year" ? getYearMonths(selected) : Promise.resolve(null),
+    rangeKey === "year" ? getYearMonths() : Promise.resolve(null),
   ]);
 
   const withTotals = projects.map((p) => ({ p, t: projectTotals(p) }));
@@ -417,7 +418,11 @@ function MoneyPeriodHeader({
         {ranges.map((r) => (
           <Link
             key={r.key}
-            href={`/?range=${r.key}&date=${date}`}
+            href={
+              r.key === "year"
+                ? "/?range=year"
+                : `/?range=${r.key}&date=${date}`
+            }
             className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
               r.key === rangeKey
                 ? "bg-brand-700 text-white"

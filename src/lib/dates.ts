@@ -177,6 +177,14 @@ export function formatWeekRange(from: Date, to: Date): string {
   return `${left} – ${b.d} ${MONTHS[b.m - 1]}`;
 }
 
+/** Week label with year — uses both years when the week crosses New Year. */
+export function formatWeekRangeWithYear(from: Date, to: Date): string {
+  const a = partsFromKey(calendarDayKey(from));
+  const b = partsFromKey(calendarDayKey(to));
+  if (a.y === b.y) return `${formatWeekRange(from, to)} ${a.y}`;
+  return `${a.d} ${MONTHS[a.m - 1]} ${a.y} – ${b.d} ${MONTHS[b.m - 1]} ${b.y}`;
+}
+
 export type MoneyRangeKey = "week" | "month" | "year";
 
 /** Parse YYYY-MM-DD from a URL, or fall back to today if missing/invalid. */
@@ -196,11 +204,10 @@ export function resolveMoneyRange(
   if (key === "week") {
     const from = startOfWeek(selected);
     const weekEnd = addDays(from, 6);
-    const year = partsFromKey(calendarDayKey(from)).y;
     return {
       from,
       to: endOfDay(weekEnd),
-      label: `${formatWeekRange(from, weekEnd)} ${year}`,
+      label: formatWeekRangeWithYear(from, weekEnd),
     };
   }
   if (key === "year") {

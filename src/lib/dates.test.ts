@@ -65,6 +65,13 @@ describe("resolveMoneyRange", () => {
     assert.equal(range.label, "7 – 13 Sep 2026");
   });
 
+  it("names a New Year week with both years", () => {
+    const range = resolveMoneyRange("week", fromDateInput("2026-01-01"));
+    assert.equal(range.from.toISOString().slice(0, 10), "2025-12-29");
+    assert.equal(range.to.toISOString().slice(0, 10), "2026-01-04");
+    assert.equal(range.label, "29 Dec 2025 – 4 Jan 2026");
+  });
+
   it("uses the whole selected month", () => {
     const range = resolveMoneyRange("month", fromDateInput("2026-08-14"));
     assert.equal(range.from.toISOString().slice(0, 10), "2026-08-01");

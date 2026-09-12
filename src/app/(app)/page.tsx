@@ -12,52 +12,38 @@ import {
 import { formatMoney } from "@/lib/money";
 import { materializeOverheads } from "@/lib/overheads";
 import {
-  startOfWeek,
-  startOfMonth,
-  startOfYear,
-  endOfMonth,
-  addDays,
-  addMonths,
-  endOfDay,
   formatDayLabel,
+  parseDateParam,
+  resolveMoneyRange,
+  shiftMoneyPeriod,
+  isCurrentMoneyPeriod,
+  toDateInput,
+  type MoneyRangeKey,
 } from "@/lib/dates";
 import { MarginBadge } from "@/components/ui";
 import { StillOwed, type OwedItem } from "@/components/StillOwed";
 import { RevenueShareCard } from "@/components/RevenueShareCard";
 import { TakingsSplit } from "@/components/TakingsSplit";
 import { YearMonthGrid } from "@/components/YearMonthGrid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-type RangeKey = "week" | "month" | "year";
-
-function resolveRange(key: RangeKey): { from: Date; to: Date; label: string } {
-  const now = new Date();
-  if (key === "week") {
-    const from = startOfWeek(now);
-    return { from, to: endOfDay(addDays(from, 6)), label: "this week" };
-  }
-  if (key === "year") {
-    const from = startOfYear(now);
-    return {
-      from: from,
-      to: endOfMonth(addMonths(from, 11)),
-      label: "this year",
-    };
-  }
-  return { from: startOfMonth(now), to: endOfMonth(now), label: "this month" };
+function parseRange(value?: string): MoneyRangeKey {
+  if (value === "week" || value === "year") return value;
+  return "month";
 }
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; date?: string }>;
 }) {
   const sp = await searchParams;
-  const rangeKey = (["week", "month", "year"].includes(sp.range || "")
-    ? sp.range
-    : "month") as RangeKey;
-  const { from, to, label } = resolveRange(rangeKey);
+  const rangeKey = parseRange(sp.range);
+  const selected =
+    rangeKey === "year" ? parseDateParam(undefined) : parseDateParam(sp.date);
+  const { from, to, label } = resolveMoneyRange(rangeKey, selected);
 
   const settings = await getSettings();
   const currency = settings.currency;
@@ -118,34 +104,11 @@ export default async function DashboardPage({
 
   const totalOutstanding = owedItems.reduce((s, x) => s + x.amount, 0);
 
-  const ranges: { key: RangeKey; label: string }[] = [
-    { key: "week", label: "Week" },
-    { key: "month", label: "Month" },
-    { key: "year", label: "Year" },
-  ];
-
   const profitPositive = summary.profit >= 0;
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="eyebrow">The numbers</div>
-        <div className="flex rounded-xl border border-stone-200 bg-white p-1">
-          {ranges.map((r) => (
-            <Link
-              key={r.key}
-              href={`/?range=${r.key}`}
-              className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
-                r.key === rangeKey
-                  ? "bg-brand-700 text-white"
-                  : "text-stone-600 hover:bg-stone-100"
-              }`}
-            >
-              {r.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <MoneyPeriodHeader rangeKey={rangeKey} selected={selected} label={label} />
 
       {/* Money thesis hero */}
       <div className="relative overflow-hidden rounded-3xl bg-brand-800 p-6 sm:p-8 text-white">
@@ -179,7 +142,7 @@ export default async function DashboardPage({
             <span className="font-semibold text-white">
               {formatMoney(summary.profit, currency)}
             </span>{" "}
-            in {label} — across {summary.jobsDone} paid{" "}
+            for {label} — across {summary.jobsDone} paid{" "}
             {summary.jobsDone === 1 ? "job" : "jobs"}.
           </p>
 
@@ -387,6 +350,88 @@ export default async function DashboardPage({
         </div>
 
         <StillOwed items={owedItems} total={totalOutstanding} currency={currency} />
+      </div>
+    </div>
+  );
+}
+
+function MoneyPeriodHeader({
+  rangeKey,
+  selected,
+  label,
+}: {
+  rangeKey: MoneyRangeKey;
+  selected: Date;
+  label: string;
+}) {
+  const date = toDateInput(selected);
+  const ranges: { key: MoneyRangeKey; label: string }[] = [
+    { key: "week", label: "Week" },
+    { key: "month", label: "Month" },
+    { key: "year", label: "Year" },
+  ];
+  const showArrows = rangeKey === "week" || rangeKey === "month";
+  const prev = showArrows
+    ? toDateInput(shiftMoneyPeriod(rangeKey, selected, -1))
+    : null;
+  const next = showArrows
+    ? toDateInput(shiftMoneyPeriod(rangeKey, selected, 1))
+    : null;
+  const onThisPeriod = isCurrentMoneyPeriod(rangeKey, selected);
+  const jumpLabel =
+    rangeKey === "week" ? "This week" : rangeKey === "month" ? "This month" : "This year";
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div className="eyebrow">The numbers</div>
+        <div className="mt-0.5 flex items-center gap-1">
+          {showArrows && prev && (
+            <Link
+              href={`/?range=${rangeKey}&date=${prev}`}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+              aria-label={rangeKey === "week" ? "Previous week" : "Previous month"}
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </Link>
+          )}
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-brand-900">
+            {label}
+          </h1>
+          {showArrows && next && (
+            <Link
+              href={`/?range=${rangeKey}&date=${next}`}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+              aria-label={rangeKey === "week" ? "Next week" : "Next month"}
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </Link>
+          )}
+          {showArrows && !onThisPeriod && (
+            <Link href={`/?range=${rangeKey}`} className="btn-ghost ml-1">
+              {jumpLabel}
+            </Link>
+          )}
+        </div>
+      </div>
+      <div className="flex rounded-xl border border-stone-200 bg-white p-1">
+        {ranges.map((r) => (
+          <Link
+            key={r.key}
+            href={
+              r.key === "year"
+                ? "/?range=year"
+                : `/?range=${r.key}&date=${date}`
+            }
+            className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold ${
+              r.key === rangeKey
+                ? "bg-brand-700 text-white"
+                : "text-stone-600 hover:bg-stone-100"
+            }`}
+          >
+            {r.label}
+          </Link>
+        ))}
       </div>
     </div>
   );

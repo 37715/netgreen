@@ -2,9 +2,8 @@
 
 import { auth, isAuthEnabled } from "@/auth";
 import { prisma } from "@/lib/db";
-import { fromDateInput, toStoredDay } from "@/lib/dates";
+import { fromDateInput, toDateInput, toStoredDay } from "@/lib/dates";
 import { isLeadStatus } from "@/lib/leads";
-import { parseAmount } from "@/lib/money";
 import type { LeadStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,17 +16,26 @@ async function requireUser() {
 
 function optionalDate(formData: FormData, name: string): Date | null {
   const value = String(formData.get(name) || "");
-  return value ? fromDateInput(value) : null;
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`Invalid ${name}`);
+  const parsed = fromDateInput(value);
+  if (toDateInput(parsed) !== value) throw new Error(`Invalid ${name}`);
+  return parsed;
 }
 
 function optionalAmount(formData: FormData, name: string): number | null {
   const value = String(formData.get(name) || "").trim();
-  return value ? parseAmount(value) : null;
+  if (!value) return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error(`${name} must be a positive amount`);
+  }
+  return amount;
 }
 
 function readLead(formData: FormData) {
   const rawStatus = String(formData.get("status") || "NEW");
-  const status = isLeadStatus(rawStatus) ? rawStatus : "NEW";
+  if (!isLeadStatus(rawStatus)) throw new Error("Invalid lead status");
 
   return {
     customerName: String(formData.get("customerName") || "").trim(),
@@ -40,7 +48,7 @@ function readLead(formData: FormData) {
     referredBy: String(formData.get("referredBy") || "").trim(),
     workType: String(formData.get("workType") || "").trim(),
     description: String(formData.get("description") || "").trim(),
-    status: status as LeadStatus,
+    status: rawStatus as LeadStatus,
     siteVisitDate: optionalDate(formData, "siteVisitDate"),
     quoteDate: optionalDate(formData, "quoteDate"),
     quoteValue: optionalAmount(formData, "quoteValue"),
@@ -70,6 +78,16 @@ export async function updateLead(formData: FormData) {
   const data = readLead(formData);
   if (!id || !data.customerName) return;
 
+  const existing = await prisma.lead.findUnique({ where: { id } });
+  if (!existing) return;
+  // Won/lost inputs are intentionally hidden in other stages. Preserve that
+  // history when someone later edits a phone number or follow-up date.
+  if (!formData.has("lostReason")) data.lostReason = existing.lostReason;
+  if (!formData.has("outcomeDate")) data.outcomeDate = existing.outcomeDate;
+  if (!formData.has("finalJobValue")) data.finalJobValue = existing.finalJobValue;
+  if (!formData.has("jobType")) data.jobType = existing.jobType;
+  if (!formData.has("jobDate")) data.jobDate = existing.jobDate;
+
   await prisma.lead.update({ where: { id }, data });
   revalidatePath("/leads");
   revalidatePath(`/leads/${id}`);
@@ -80,7 +98,7 @@ export async function setLeadStatus(formData: FormData) {
   await requireUser();
   const id = Number(formData.get("id"));
   const rawStatus = String(formData.get("status") || "");
-  if (!id || !isLeadStatus(rawStatus)) return;
+  if (!id || !isLeadStatus(rawStatus)) throw new Error("Invalid lead status");
 
   const closed = rawStatus === "WON" || rawStatus === "LOST";
   await prisma.lead.update({
@@ -102,4 +120,22 @@ export async function deleteLead(formData: FormData) {
   await prisma.lead.delete({ where: { id } });
   revalidatePath("/leads");
   redirect("/leads");
+}
+
+export async function recordLostReason(formData: FormData) {
+  await requireUser();
+  const id = Number(formData.get("id"));
+  const lostReason = String(formData.get("lostReason") || "").trim();
+  if (!id || !lostReason) return;
+
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      status: "LOST",
+      lostReason,
+      outcomeDate: toStoredDay(new Date()),
+    },
+  });
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${id}`);
 }

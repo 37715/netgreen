@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteLead, setLeadStatus, updateLead } from "@/app/actions/leads";
+import {
+  deleteLead,
+  recordLostReason,
+  setLeadStatus,
+  updateLead,
+} from "@/app/actions/leads";
 import { LeadForm } from "@/components/LeadForm";
 import { MailIcon, PhoneIcon } from "@/components/icons";
 import { Collapsible } from "@/components/Collapsible";
+import { ConfirmDeleteLead } from "@/components/ConfirmDeleteLead";
 import { prisma } from "@/lib/db";
 import { formatDayLabel, toDateInput } from "@/lib/dates";
 import {
@@ -50,14 +56,17 @@ export default async function LeadDetailPage({
           {lead.phone ? (
             <a
               href={`tel:${lead.phone.replace(/[^\d+]/g, "")}`}
-              className="btn-primary py-3.5"
+              className={`btn-primary py-3.5 ${lead.email ? "" : "col-span-2"}`}
             >
               <PhoneIcon className="h-5 w-5" />
               Call
             </a>
           ) : <div />}
           {lead.email && (
-            <a href={`mailto:${lead.email}`} className="btn-secondary py-3.5">
+            <a
+              href={`mailto:${lead.email}`}
+              className={`btn-secondary py-3.5 ${lead.phone ? "" : "col-span-2"}`}
+            >
               <MailIcon className="h-5 w-5" />
               Email
             </a>
@@ -87,6 +96,28 @@ export default async function LeadDetailPage({
           ))}
         </div>
       </section>
+
+      {lead.status === "LOST" && !lead.lostReason && (
+        <form
+          action={recordLostReason}
+          className="mt-4 rounded-2xl border border-clay-100 bg-clay-100/60 p-4"
+        >
+          <input type="hidden" name="id" value={lead.id} />
+          <label className="label text-clay-600">Why was this quote lost?</label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select name="lostReason" className="input" required defaultValue="">
+              <option value="" disabled>Choose a reason</option>
+              <option value="Too expensive">Too expensive</option>
+              <option value="No response">No response</option>
+              <option value="Competitor">Competitor</option>
+              <option value="Delayed / cancelled">Delayed / cancelled</option>
+              <option value="Not a good fit">Not a good fit</option>
+              <option value="Other">Other</option>
+            </select>
+            <button type="submit" className="btn-primary shrink-0">Save reason</button>
+          </div>
+        </form>
+      )}
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <SummaryCell
@@ -139,7 +170,7 @@ export default async function LeadDetailPage({
         </dl>
       </section>
 
-      <div className="mt-4">
+      <div className="mt-4" id="edit-details">
         <Collapsible label="Edit all details">
           <LeadForm
             action={updateLead}
@@ -172,10 +203,9 @@ export default async function LeadDetailPage({
         </Collapsible>
       </div>
 
-      <form action={deleteLead} className="mt-4">
-        <input type="hidden" name="id" value={lead.id} />
-        <button type="submit" className="btn-danger w-full">Delete lead</button>
-      </form>
+      <div className="mt-4">
+        <ConfirmDeleteLead id={lead.id} action={deleteLead} />
+      </div>
     </div>
   );
 }

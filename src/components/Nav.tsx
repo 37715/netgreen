@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   UsersIcon,
   ProjectIcon,
+  LeadsIcon,
   ReceiptIcon,
   SettingsIcon,
   LeafIcon,
@@ -18,6 +19,7 @@ const links = [
   // Jobs holds both the Work (to-do) and Paid sections, toggled at the top.
   { href: "/calendar", label: "Jobs", Icon: CalendarIcon, also: ["/paid"] },
   { href: "/", label: "Money", Icon: HomeIcon, exact: true },
+  { href: "/leads", label: "Leads", Icon: LeadsIcon },
   { href: "/projects", label: "Projects", Icon: ProjectIcon },
   { href: "/overheads", label: "Costs", Icon: ReceiptIcon },
   { href: "/customers", label: "Rounds", Icon: UsersIcon },

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatDayLabel } from "@/lib/dates";
 import {
+  calculateLeadQuote,
   calculateLeadStats,
   isFollowUpDue,
   LEAD_STATUSES,
@@ -76,11 +77,16 @@ export default async function LeadsPage({
         </Link>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <PipelineStat label="Open leads" value={String(stats.open)} />
         <PipelineStat
-          label="Quotes out"
-          value={formatMoney(stats.quotedPipelineValue)}
+          label="One-off quoted"
+          value={formatMoney(stats.oneOffQuotedValue)}
+          money
+        />
+        <PipelineStat
+          label="Repeat / month"
+          value={formatMoney(stats.recurringMonthlyValue)}
           money
         />
         <PipelineStat
@@ -143,6 +149,7 @@ export default async function LeadsPage({
           <div className="divide-y divide-stone-100">
             {leads.map((lead) => {
               const due = isFollowUpDue(lead);
+              const quote = calculateLeadQuote(lead);
               return (
                 <Link
                   key={lead.id}
@@ -168,9 +175,18 @@ export default async function LeadsPage({
                   </div>
                   <div className="mt-2 min-w-0 text-xs text-stone-500 md:mt-0">
                     <div className="truncate">{lead.phone || lead.email || "No contact saved"}</div>
-                    {lead.quoteValue != null && (
+                    {(quote.oneOffValue != null ||
+                      quote.perVisitValue != null ||
+                      quote.monthlyValue != null) && (
                       <div className="ledger mt-0.5 font-semibold text-stone-700">
-                        {formatMoney(lead.quoteValue)} quoted
+                        {quote.oneOffValue != null &&
+                          `${formatMoney(quote.oneOffValue)} one-off`}
+                        {quote.perVisitValue != null &&
+                          `${formatMoney(quote.perVisitValue)}/visit`}
+                        {quote.monthlyValue != null &&
+                          `${quote.perVisitValue != null ? " · " : ""}${formatMoney(
+                            quote.monthlyValue
+                          )}/month`}
                       </div>
                     )}
                   </div>

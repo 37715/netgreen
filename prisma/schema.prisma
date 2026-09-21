@@ -187,6 +187,27 @@ enum LeadStatus {
   LOST
 }
 
+enum LeadQuoteJobType {
+  ONE_OFF
+  RECURRING
+}
+
+enum LeadPricingModel {
+  FIXED_TOTAL
+  PER_VISIT
+  HOURLY
+  MONTHLY
+}
+
+enum LeadFrequency {
+  ONCE
+  WEEKLY
+  FORTNIGHTLY
+  FOUR_WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
 // Sales enquiries live separately from Customers and Projects until the work
 // is won. This keeps quote follow-up focused without polluting the job book.
 model Lead {
@@ -204,7 +225,14 @@ model Lead {
   status        LeadStatus @default(NEW)
   siteVisitDate DateTime?
   quoteDate     DateTime?
+  quoteJobType  LeadQuoteJobType @default(ONE_OFF)
+  pricingModel  LeadPricingModel @default(FIXED_TOTAL)
+  frequency     LeadFrequency @default(ONCE)
+  frequencyDetail String     @default("")
   quoteValue    Float?
+  hourlyRate    Float?
+  estimatedHours Float?
+  estimatedWorkers Int?
   lostReason    String     @default("")
   outcomeDate   DateTime?
   finalJobValue Float?

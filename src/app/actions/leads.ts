@@ -3,8 +3,21 @@
 import { auth, isAuthEnabled } from "@/auth";
 import { prisma } from "@/lib/db";
 import { fromDateInput, toDateInput, toStoredDay } from "@/lib/dates";
-import { isLeadStatus } from "@/lib/leads";
-import type { LeadStatus } from "@prisma/client";
+import {
+  LEAD_FREQUENCIES,
+  LEAD_PRICING_MODELS,
+  LEAD_QUOTE_JOB_TYPES,
+  isLeadStatus,
+  type LeadFrequencyValue,
+  type LeadPricingModelValue,
+  type LeadQuoteJobTypeValue,
+} from "@/lib/leads";
+import type {
+  LeadFrequency,
+  LeadPricingModel,
+  LeadQuoteJobType,
+  LeadStatus,
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -33,9 +46,49 @@ function optionalAmount(formData: FormData, name: string): number | null {
   return amount;
 }
 
+function optionalPositiveInteger(formData: FormData, name: string): number | null {
+  const value = optionalAmount(formData, name);
+  if (value == null) return null;
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} must be a whole number above zero`);
+  }
+  return value;
+}
+
 function readLead(formData: FormData) {
   const rawStatus = String(formData.get("status") || "NEW");
   if (!isLeadStatus(rawStatus)) throw new Error("Invalid lead status");
+  const quoteJobType = String(
+    formData.get("quoteJobType") || "ONE_OFF"
+  ) as LeadQuoteJobTypeValue;
+  const pricingModel = String(
+    formData.get("pricingModel") || "FIXED_TOTAL"
+  ) as LeadPricingModelValue;
+  const frequency = String(
+    formData.get("frequency") || "ONCE"
+  ) as LeadFrequencyValue;
+
+  if (!LEAD_QUOTE_JOB_TYPES.includes(quoteJobType)) {
+    throw new Error("Invalid quote job type");
+  }
+  if (!LEAD_PRICING_MODELS.includes(pricingModel)) {
+    throw new Error("Invalid pricing model");
+  }
+  if (!LEAD_FREQUENCIES.includes(frequency)) {
+    throw new Error("Invalid frequency");
+  }
+  if (
+    quoteJobType === "ONE_OFF" &&
+    !["FIXED_TOTAL", "HOURLY"].includes(pricingModel)
+  ) {
+    throw new Error("Invalid one-off pricing model");
+  }
+  if (
+    quoteJobType === "RECURRING" &&
+    !["PER_VISIT", "HOURLY", "MONTHLY"].includes(pricingModel)
+  ) {
+    throw new Error("Invalid recurring pricing model");
+  }
 
   return {
     customerName: String(formData.get("customerName") || "").trim(),
@@ -51,7 +104,14 @@ function readLead(formData: FormData) {
     status: rawStatus as LeadStatus,
     siteVisitDate: optionalDate(formData, "siteVisitDate"),
     quoteDate: optionalDate(formData, "quoteDate"),
+    quoteJobType: quoteJobType as LeadQuoteJobType,
+    pricingModel: pricingModel as LeadPricingModel,
+    frequency: (quoteJobType === "ONE_OFF" ? "ONCE" : frequency) as LeadFrequency,
+    frequencyDetail: String(formData.get("frequencyDetail") || "").trim(),
     quoteValue: optionalAmount(formData, "quoteValue"),
+    hourlyRate: optionalAmount(formData, "hourlyRate"),
+    estimatedHours: optionalAmount(formData, "estimatedHours"),
+    estimatedWorkers: optionalPositiveInteger(formData, "estimatedWorkers"),
     lostReason: String(formData.get("lostReason") || "").trim(),
     outcomeDate: optionalDate(formData, "outcomeDate"),
     finalJobValue: optionalAmount(formData, "finalJobValue"),

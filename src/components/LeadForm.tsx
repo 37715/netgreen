@@ -1,14 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  calculateLeadQuote,
+  leadFrequencyLabels,
+  LEAD_FREQUENCIES,
   LEAD_STATUSES,
   leadSourceOptions,
   leadStatusLabels,
   leadWorkTypeOptions,
   salesmanOptions,
+  type LeadFrequencyValue,
+  type LeadPricingModelValue,
+  type LeadQuoteJobTypeValue,
   type LeadStatusValue,
 } from "@/lib/leads";
+import { formatMoney } from "@/lib/money";
 
 export type LeadFormDefaults = {
   id?: number;
@@ -25,7 +32,14 @@ export type LeadFormDefaults = {
   status?: LeadStatusValue;
   siteVisitDate?: string;
   quoteDate?: string;
+  quoteJobType?: LeadQuoteJobTypeValue;
+  pricingModel?: LeadPricingModelValue;
+  frequency?: LeadFrequencyValue;
+  frequencyDetail?: string;
   quoteValue?: number | null;
+  hourlyRate?: number | null;
+  estimatedHours?: number | null;
+  estimatedWorkers?: number | null;
   lostReason?: string;
   outcomeDate?: string;
   finalJobValue?: number | null;
@@ -45,6 +59,59 @@ export function LeadForm({
   submitLabel?: string;
 }) {
   const [status, setStatus] = useState<LeadStatusValue>(defaults.status ?? "NEW");
+  const [quoteJobType, setQuoteJobType] = useState<LeadQuoteJobTypeValue>(
+    defaults.quoteJobType ?? "ONE_OFF"
+  );
+  const [pricingModel, setPricingModel] = useState<LeadPricingModelValue>(
+    defaults.pricingModel ?? "FIXED_TOTAL"
+  );
+  const [frequency, setFrequency] = useState<LeadFrequencyValue>(
+    defaults.frequency ?? "ONCE"
+  );
+  const [quoteValue, setQuoteValue] = useState(
+    defaults.quoteValue == null ? "" : String(defaults.quoteValue)
+  );
+  const [hourlyRate, setHourlyRate] = useState(
+    defaults.hourlyRate == null ? "" : String(defaults.hourlyRate)
+  );
+  const [estimatedHours, setEstimatedHours] = useState(
+    defaults.estimatedHours == null ? "" : String(defaults.estimatedHours)
+  );
+  const [estimatedWorkers, setEstimatedWorkers] = useState(
+    defaults.estimatedWorkers == null ? "1" : String(defaults.estimatedWorkers)
+  );
+  const quote = useMemo(
+    () =>
+      calculateLeadQuote({
+        quoteJobType,
+        pricingModel,
+        frequency,
+        quoteValue: quoteValue ? Number(quoteValue) : null,
+        hourlyRate: hourlyRate ? Number(hourlyRate) : null,
+        estimatedHours: estimatedHours ? Number(estimatedHours) : null,
+        estimatedWorkers: estimatedWorkers ? Number(estimatedWorkers) : null,
+      }),
+    [
+      estimatedHours,
+      estimatedWorkers,
+      frequency,
+      hourlyRate,
+      pricingModel,
+      quoteJobType,
+      quoteValue,
+    ]
+  );
+
+  function chooseJobType(value: LeadQuoteJobTypeValue) {
+    setQuoteJobType(value);
+    if (value === "ONE_OFF") {
+      setPricingModel("FIXED_TOTAL");
+      setFrequency("ONCE");
+    } else {
+      setPricingModel("PER_VISIT");
+      setFrequency("WEEKLY");
+    }
+  }
 
   return (
     <form action={action} className="space-y-4">
@@ -158,7 +225,7 @@ export function LeadForm({
         </Field>
       </FormSection>
 
-      <FormSection title="Progress" hint="The dates and value that move this quote forward.">
+      <FormSection title="Progress" hint="What needs to happen next.">
         <Field label="Lead status">
           <select
             name="status"
@@ -187,6 +254,182 @@ export function LeadForm({
             className="input"
           />
         </Field>
+      </FormSection>
+
+      <FormSection
+        title="Quote & pricing"
+        hint="Record what the customer is actually buying, not just one unexplained number."
+      >
+        <input type="hidden" name="quoteJobType" value={quoteJobType} />
+        <input type="hidden" name="pricingModel" value={pricingModel} />
+        <input type="hidden" name="frequency" value={frequency} />
+
+        <div className="sm:col-span-2">
+          <label className="label">Type of work</label>
+          <div className="grid grid-cols-2 gap-2">
+            <ChoiceButton
+              active={quoteJobType === "ONE_OFF"}
+              onClick={() => chooseJobType("ONE_OFF")}
+              title="One-off job"
+              hint="Patio, fencing, clearance..."
+            />
+            <ChoiceButton
+              active={quoteJobType === "RECURRING"}
+              onClick={() => chooseJobType("RECURRING")}
+              title="Repeat maintenance"
+              hint="Regular ongoing visits"
+            />
+          </div>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="label">How is it priced?</label>
+          <div className="flex flex-wrap gap-2">
+            {quoteJobType === "ONE_OFF" ? (
+              <>
+                <PricingButton
+                  active={pricingModel === "FIXED_TOTAL"}
+                  onClick={() => setPricingModel("FIXED_TOTAL")}
+                >
+                  Fixed total
+                </PricingButton>
+                <PricingButton
+                  active={pricingModel === "HOURLY"}
+                  onClick={() => setPricingModel("HOURLY")}
+                >
+                  Hourly estimate
+                </PricingButton>
+              </>
+            ) : (
+              <>
+                <PricingButton
+                  active={pricingModel === "PER_VISIT"}
+                  onClick={() => setPricingModel("PER_VISIT")}
+                >
+                  Per visit
+                </PricingButton>
+                <PricingButton
+                  active={pricingModel === "HOURLY"}
+                  onClick={() => setPricingModel("HOURLY")}
+                >
+                  Hourly
+                </PricingButton>
+                <PricingButton
+                  active={pricingModel === "MONTHLY"}
+                  onClick={() => setPricingModel("MONTHLY")}
+                >
+                  Monthly fee
+                </PricingButton>
+              </>
+            )}
+          </div>
+        </div>
+
+        {quoteJobType === "RECURRING" && (
+          <>
+            <Field label="How often?">
+              <select
+                value={frequency}
+                onChange={(event) =>
+                  setFrequency(event.target.value as LeadFrequencyValue)
+                }
+                className="input"
+              >
+                {LEAD_FREQUENCIES.filter((value) => value !== "ONCE").map(
+                  (value) => (
+                    <option key={value} value={value}>
+                      {leadFrequencyLabels[value]}
+                    </option>
+                  )
+                )}
+              </select>
+            </Field>
+            {frequency === "CUSTOM" && (
+              <Field label="Frequency detail">
+                <input
+                  name="frequencyDetail"
+                  defaultValue={defaults.frequencyDetail}
+                  className="input"
+                  placeholder="e.g. 8 visits a year"
+                />
+              </Field>
+            )}
+          </>
+        )}
+
+        {pricingModel === "HOURLY" ? (
+          <>
+            <Field label="Hourly rate (£)">
+              <input
+                name="hourlyRate"
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={hourlyRate}
+                onChange={(event) => setHourlyRate(event.target.value)}
+                className="input"
+                placeholder="e.g. 30"
+              />
+            </Field>
+            <Field label="People">
+              <select
+                name="estimatedWorkers"
+                value={estimatedWorkers}
+                onChange={(event) => setEstimatedWorkers(event.target.value)}
+                className="input"
+              >
+                {[1, 2, 3, 4].map((count) => (
+                  <option key={count} value={count}>{count}</option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label={
+                quoteJobType === "RECURRING"
+                  ? "Hours per visit"
+                  : "Estimated hours"
+              }
+              wide
+            >
+              <input
+                name="estimatedHours"
+                type="number"
+                min="0"
+                step="0.25"
+                inputMode="decimal"
+                value={estimatedHours}
+                onChange={(event) => setEstimatedHours(event.target.value)}
+                className="input"
+                placeholder="e.g. 3"
+              />
+            </Field>
+          </>
+        ) : (
+          <Field
+            label={
+              pricingModel === "MONTHLY"
+                ? "Monthly fee (£)"
+                : pricingModel === "PER_VISIT"
+                  ? "Price per visit (£)"
+                  : "Total quote (£)"
+            }
+            wide
+          >
+            <input
+              name="quoteValue"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={quoteValue}
+              onChange={(event) => setQuoteValue(event.target.value)}
+              className="input"
+              placeholder="0.00"
+            />
+          </Field>
+        )}
+
         <Field label="Quote sent">
           <input
             name="quoteDate"
@@ -195,21 +438,43 @@ export function LeadForm({
             className="input"
           />
         </Field>
-        <Field label="Quote value (£)" wide>
-          <input
-            name="quoteValue"
-            type="number"
-            min="0"
-            step="0.01"
-            inputMode="decimal"
-            defaultValue={defaults.quoteValue ?? ""}
-            className="input"
-            placeholder="0.00"
-          />
-        </Field>
 
-        {status === "WON" && (
-          <>
+        {(quote.oneOffValue != null ||
+          quote.perVisitValue != null ||
+          quote.monthlyValue != null) && (
+          <div className="sm:col-span-2 rounded-2xl bg-brand-50 p-4">
+            <div className="eyebrow">Quote summary</div>
+            <div className="mt-1 font-display text-xl font-extrabold text-brand-900">
+              {quote.oneOffValue != null &&
+                `${formatMoney(quote.oneOffValue)} ${
+                  pricingModel === "HOURLY" ? "estimated total" : "one-off"
+                }`}
+              {quote.perVisitValue != null &&
+                `${formatMoney(quote.perVisitValue)} per visit`}
+              {quote.perVisitValue == null &&
+                quote.monthlyValue != null &&
+                `${formatMoney(quote.monthlyValue)} per month`}
+            </div>
+            {quote.perVisitValue != null && quote.monthlyValue != null && (
+              <div className="ledger mt-1 text-sm font-semibold text-brand-700">
+                ≈ {formatMoney(quote.monthlyValue)} per month
+              </div>
+            )}
+            {pricingModel === "HOURLY" &&
+              hourlyRate &&
+              estimatedHours &&
+              estimatedWorkers && (
+                <p className="mt-1 text-xs text-stone-500">
+                  {estimatedWorkers} × {formatMoney(Number(hourlyRate))}/hr ×{" "}
+                  {estimatedHours} hrs
+                </p>
+              )}
+          </div>
+        )}
+      </FormSection>
+
+      {status === "WON" && (
+        <FormSection title="Won job" hint="What was finally agreed with the customer.">
             <Field label="Date won">
               <input
                 name="outcomeDate"
@@ -218,7 +483,7 @@ export function LeadForm({
                 className="input"
               />
             </Field>
-            <Field label="Final job value (£)">
+            <Field label="Final agreed amount (£)">
               <input
                 name="finalJobValue"
                 type="number"
@@ -230,13 +495,6 @@ export function LeadForm({
                 placeholder="0.00"
               />
             </Field>
-            <Field label="Job type">
-              <select name="jobType" defaultValue={defaults.jobType ?? ""} className="input">
-                <option value="">Not set</option>
-                <option value="One-off">One-off</option>
-                <option value="Recurring">Recurring</option>
-              </select>
-            </Field>
             <Field label="Job date">
               <input
                 name="jobDate"
@@ -245,11 +503,11 @@ export function LeadForm({
                 className="input"
               />
             </Field>
-          </>
-        )}
+        </FormSection>
+      )}
 
-        {status === "LOST" && (
-          <>
+      {status === "LOST" && (
+        <FormSection title="Lost quote" hint="This helps reveal why quotes are not converting.">
             <Field label="Date lost">
               <input
                 name="outcomeDate"
@@ -273,9 +531,8 @@ export function LeadForm({
                 <option value="Other">Other</option>
               </select>
             </Field>
-          </>
-        )}
-      </FormSection>
+        </FormSection>
+      )}
 
       <FormSection title="Notes">
         <Field label="Anything else" wide>
@@ -328,5 +585,56 @@ function Field({
       <label className="label">{label}</label>
       {children}
     </div>
+  );
+}
+
+function ChoiceButton({
+  active,
+  onClick,
+  title,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-3 text-left transition-colors ${
+        active
+          ? "border-brand-700 bg-brand-50 text-brand-900"
+          : "border-stone-200 bg-white text-stone-600"
+      }`}
+    >
+      <span className="block text-sm font-bold">{title}</span>
+      <span className="mt-0.5 block text-[11px] text-stone-500">{hint}</span>
+    </button>
+  );
+}
+
+function PricingButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+        active
+          ? "border-brand-700 bg-brand-700 text-white"
+          : "border-stone-200 bg-white text-stone-600"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

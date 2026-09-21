@@ -13,7 +13,9 @@ import { ConfirmDeleteLead } from "@/components/ConfirmDeleteLead";
 import { prisma } from "@/lib/db";
 import { formatDayLabel, toDateInput } from "@/lib/dates";
 import {
+  calculateLeadQuote,
   LEAD_STATUSES,
+  leadFrequencyLabels,
   leadStatusLabels,
   leadStatusStyles,
 } from "@/lib/leads";
@@ -27,6 +29,31 @@ export default async function LeadDetailPage({
   const { id } = await params;
   const lead = await prisma.lead.findUnique({ where: { id: Number(id) } });
   if (!lead) notFound();
+  const quote = calculateLeadQuote(lead);
+  const quoteHeadline =
+    quote.oneOffValue != null
+      ? `${formatMoney(quote.oneOffValue)} one-off`
+      : quote.perVisitValue != null
+        ? `${formatMoney(quote.perVisitValue)} per visit`
+        : quote.monthlyValue != null
+          ? `${formatMoney(quote.monthlyValue)} per month`
+          : "Not priced yet";
+  const quoteHints = [
+    lead.pricingModel === "HOURLY" &&
+    lead.hourlyRate != null &&
+    lead.estimatedHours != null &&
+    lead.estimatedWorkers != null
+      ? `${lead.estimatedWorkers} × ${formatMoney(lead.hourlyRate)}/hr × ${lead.estimatedHours} hrs`
+      : "",
+    quote.perVisitValue != null && quote.monthlyValue != null
+      ? `≈ ${formatMoney(quote.monthlyValue)} per month`
+      : "",
+    lead.quoteJobType === "RECURRING"
+      ? lead.frequency === "CUSTOM"
+        ? lead.frequencyDetail
+        : leadFrequencyLabels[lead.frequency]
+      : "",
+  ].filter(Boolean);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -121,9 +148,11 @@ export default async function LeadDetailPage({
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <SummaryCell
-          label="Quote value"
-          value={lead.quoteValue == null ? "—" : formatMoney(lead.quoteValue)}
+          label="Quote pricing"
+          value={quoteHeadline}
+          hint={quoteHints.join(" · ")}
           money
+          wide
         />
         <SummaryCell
           label="Follow up"
@@ -150,6 +179,35 @@ export default async function LeadDetailPage({
             label="Quote sent"
             value={lead.quoteDate ? formatDayLabel(lead.quoteDate) : ""}
           />
+          <DetailRow
+            label="Work basis"
+            value={
+              lead.quoteJobType === "RECURRING"
+                ? "Repeat maintenance"
+                : "One-off job"
+            }
+          />
+          <DetailRow
+            label="Price basis"
+            value={
+              {
+                FIXED_TOTAL: "Fixed total",
+                PER_VISIT: "Per visit",
+                HOURLY: "Hourly",
+                MONTHLY: "Monthly fee",
+              }[lead.pricingModel]
+            }
+          />
+          {lead.quoteJobType === "RECURRING" && (
+            <DetailRow
+              label="Frequency"
+              value={
+                lead.frequency === "CUSTOM"
+                  ? lead.frequencyDetail
+                  : leadFrequencyLabels[lead.frequency]
+              }
+            />
+          )}
           {lead.status === "LOST" && (
             <DetailRow label="Lost reason" value={lead.lostReason} />
           )}
@@ -159,7 +217,6 @@ export default async function LeadDetailPage({
                 label="Final job value"
                 value={lead.finalJobValue == null ? "" : formatMoney(lead.finalJobValue)}
               />
-              <DetailRow label="Job type" value={lead.jobType} />
               <DetailRow
                 label="Job date"
                 value={lead.jobDate ? formatDayLabel(lead.jobDate) : ""}
@@ -190,7 +247,14 @@ export default async function LeadDetailPage({
               status: lead.status,
               siteVisitDate: lead.siteVisitDate ? toDateInput(lead.siteVisitDate) : undefined,
               quoteDate: lead.quoteDate ? toDateInput(lead.quoteDate) : undefined,
+              quoteJobType: lead.quoteJobType,
+              pricingModel: lead.pricingModel,
+              frequency: lead.frequency,
+              frequencyDetail: lead.frequencyDetail,
               quoteValue: lead.quoteValue,
+              hourlyRate: lead.hourlyRate,
+              estimatedHours: lead.estimatedHours,
+              estimatedWorkers: lead.estimatedWorkers,
               lostReason: lead.lostReason,
               outcomeDate: lead.outcomeDate ? toDateInput(lead.outcomeDate) : undefined,
               finalJobValue: lead.finalJobValue,
@@ -213,20 +277,29 @@ export default async function LeadDetailPage({
 function SummaryCell({
   label,
   value,
+  hint,
   money = false,
+  wide = false,
 }: {
   label: string;
   value: string;
+  hint?: string;
   money?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+    <div
+      className={`rounded-2xl border border-stone-200 bg-white p-4 shadow-sm ${
+        wide ? "col-span-2" : ""
+      }`}
+    >
       <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">
         {label}
       </div>
       <div className={`mt-1 break-words font-bold text-brand-900 ${money ? "ledger text-lg" : "text-sm"}`}>
         {value}
       </div>
+      {hint && <div className="mt-1 text-xs text-stone-500">{hint}</div>}
     </div>
   );
 }

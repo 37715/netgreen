@@ -90,6 +90,7 @@ export type LeadQuoteInput = {
   estimatedHours?: number | null;
   estimatedWorkers?: number | null;
   frequency?: string;
+  customVisitsPerYear?: number | null;
 };
 
 function positive(value: number | null | undefined): number | null {
@@ -100,11 +101,21 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function visitsEachMonth(frequency: string): number | null {
+function visitsEachMonth(
+  frequency: string,
+  customVisitsPerYear?: number | null
+): number | null {
   if (frequency === "WEEKLY") return 52 / 12;
   if (frequency === "FORTNIGHTLY") return 26 / 12;
   if (frequency === "FOUR_WEEKLY") return 13 / 12;
   if (frequency === "MONTHLY") return 1;
+  if (
+    frequency === "CUSTOM" &&
+    customVisitsPerYear != null &&
+    customVisitsPerYear > 0
+  ) {
+    return customVisitsPerYear / 12;
+  }
   return null;
 }
 
@@ -135,7 +146,10 @@ export function calculateLeadQuote(input: LeadQuoteInput): {
     };
   }
 
-  const visitsPerMonth = visitsEachMonth(frequency);
+  const visitsPerMonth = visitsEachMonth(
+    frequency,
+    positive(input.customVisitsPerYear)
+  );
   if (pricingModel === "MONTHLY") {
     return {
       oneOffValue: null,

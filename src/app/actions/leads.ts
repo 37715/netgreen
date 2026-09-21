@@ -89,6 +89,17 @@ function readLead(formData: FormData) {
   ) {
     throw new Error("Invalid recurring pricing model");
   }
+  if (quoteJobType === "RECURRING" && frequency === "ONCE") {
+    throw new Error("Recurring work needs a frequency");
+  }
+  const customVisitsPerYear = optionalAmount(formData, "customVisitsPerYear");
+  if (
+    quoteJobType === "RECURRING" &&
+    frequency === "CUSTOM" &&
+    (!customVisitsPerYear || customVisitsPerYear <= 0)
+  ) {
+    throw new Error("Custom frequency needs visits per year");
+  }
 
   return {
     customerName: String(formData.get("customerName") || "").trim(),
@@ -108,6 +119,10 @@ function readLead(formData: FormData) {
     pricingModel: pricingModel as LeadPricingModel,
     frequency: (quoteJobType === "ONE_OFF" ? "ONCE" : frequency) as LeadFrequency,
     frequencyDetail: String(formData.get("frequencyDetail") || "").trim(),
+    customVisitsPerYear:
+      quoteJobType === "RECURRING" && frequency === "CUSTOM"
+        ? customVisitsPerYear
+        : null,
     quoteValue: optionalAmount(formData, "quoteValue"),
     hourlyRate: optionalAmount(formData, "hourlyRate"),
     estimatedHours: optionalAmount(formData, "estimatedHours"),

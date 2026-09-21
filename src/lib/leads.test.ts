@@ -79,6 +79,19 @@ describe("calculateLeadQuote", () => {
     assert.equal(quote.monthlyValue, 500);
     assert.equal(quote.perVisitValue, null);
   });
+
+  it("uses a custom visits-per-year cadence in monthly pipeline value", () => {
+    const quote = calculateLeadQuote({
+      quoteJobType: "RECURRING",
+      pricingModel: "PER_VISIT",
+      quoteValue: 60,
+      frequency: "CUSTOM",
+      customVisitsPerYear: 8,
+    });
+
+    assert.equal(quote.visitsPerMonth, 8 / 12);
+    assert.equal(quote.monthlyValue, 40);
+  });
 });
 
 describe("isFollowUpDue", () => {

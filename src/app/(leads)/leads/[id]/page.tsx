@@ -50,7 +50,14 @@ export default async function LeadDetailPage({
       : "",
     lead.quoteJobType === "RECURRING"
       ? lead.frequency === "CUSTOM"
-        ? lead.frequencyDetail
+        ? [
+            lead.customVisitsPerYear
+              ? `${lead.customVisitsPerYear} visits/year`
+              : "",
+            lead.frequencyDetail,
+          ]
+            .filter(Boolean)
+            .join(" · ")
         : leadFrequencyLabels[lead.frequency]
       : "",
   ].filter(Boolean);
@@ -203,7 +210,14 @@ export default async function LeadDetailPage({
               label="Frequency"
               value={
                 lead.frequency === "CUSTOM"
-                  ? lead.frequencyDetail
+                  ? [
+                      lead.customVisitsPerYear
+                        ? `${lead.customVisitsPerYear} visits/year`
+                        : "",
+                      lead.frequencyDetail,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
                   : leadFrequencyLabels[lead.frequency]
               }
             />
@@ -251,6 +265,7 @@ export default async function LeadDetailPage({
               pricingModel: lead.pricingModel,
               frequency: lead.frequency,
               frequencyDetail: lead.frequencyDetail,
+              customVisitsPerYear: lead.customVisitsPerYear,
               quoteValue: lead.quoteValue,
               hourlyRate: lead.hourlyRate,
               estimatedHours: lead.estimatedHours,

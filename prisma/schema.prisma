@@ -229,6 +229,7 @@ model Lead {
   pricingModel  LeadPricingModel @default(FIXED_TOTAL)
   frequency     LeadFrequency @default(ONCE)
   frequencyDetail String     @default("")
+  customVisitsPerYear Float?
   quoteValue    Float?
   hourlyRate    Float?
   estimatedHours Float?

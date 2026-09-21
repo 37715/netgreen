@@ -36,6 +36,7 @@ export type LeadFormDefaults = {
   pricingModel?: LeadPricingModelValue;
   frequency?: LeadFrequencyValue;
   frequencyDetail?: string;
+  customVisitsPerYear?: number | null;
   quoteValue?: number | null;
   hourlyRate?: number | null;
   estimatedHours?: number | null;
@@ -80,6 +81,11 @@ export function LeadForm({
   const [estimatedWorkers, setEstimatedWorkers] = useState(
     defaults.estimatedWorkers == null ? "1" : String(defaults.estimatedWorkers)
   );
+  const [customVisitsPerYear, setCustomVisitsPerYear] = useState(
+    defaults.customVisitsPerYear == null
+      ? ""
+      : String(defaults.customVisitsPerYear)
+  );
   const quote = useMemo(
     () =>
       calculateLeadQuote({
@@ -90,10 +96,14 @@ export function LeadForm({
         hourlyRate: hourlyRate ? Number(hourlyRate) : null,
         estimatedHours: estimatedHours ? Number(estimatedHours) : null,
         estimatedWorkers: estimatedWorkers ? Number(estimatedWorkers) : null,
+        customVisitsPerYear: customVisitsPerYear
+          ? Number(customVisitsPerYear)
+          : null,
       }),
     [
       estimatedHours,
       estimatedWorkers,
+      customVisitsPerYear,
       frequency,
       hourlyRate,
       pricingModel,
@@ -103,6 +113,7 @@ export function LeadForm({
   );
 
   function chooseJobType(value: LeadQuoteJobTypeValue) {
+    if (value === quoteJobType) return;
     setQuoteJobType(value);
     if (value === "ONE_OFF") {
       setPricingModel("FIXED_TOTAL");
@@ -345,14 +356,32 @@ export function LeadForm({
               </select>
             </Field>
             {frequency === "CUSTOM" && (
-              <Field label="Frequency detail">
-                <input
-                  name="frequencyDetail"
-                  defaultValue={defaults.frequencyDetail}
-                  className="input"
-                  placeholder="e.g. 8 visits a year"
-                />
-              </Field>
+              <>
+                <Field label="Visits per year">
+                  <input
+                    name="customVisitsPerYear"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={customVisitsPerYear}
+                    onChange={(event) =>
+                      setCustomVisitsPerYear(event.target.value)
+                    }
+                    className="input"
+                    placeholder="e.g. 8"
+                    required
+                  />
+                </Field>
+                <Field label="Frequency detail" wide>
+                  <input
+                    name="frequencyDetail"
+                    defaultValue={defaults.frequencyDetail}
+                    className="input"
+                    placeholder="e.g. monthly in summer, every 8 weeks in winter"
+                  />
+                </Field>
+              </>
             )}
           </>
         )}

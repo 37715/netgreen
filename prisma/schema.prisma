@@ -178,6 +178,48 @@ model Project {
   createdAt   DateTime       @default(now())
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  QUOTED
+  WON
+  LOST
+}
+
+// Sales enquiries live separately from Customers and Projects until the work
+// is won. This keeps quote follow-up focused without polluting the job book.
+model Lead {
+  id            Int        @id @default(autoincrement())
+  customerName  String
+  email         String     @default("")
+  phone         String     @default("")
+  area          String     @default("")
+  salesman      String     @default("")
+  source        String     @default("")
+  sourceDetail  String     @default("")
+  referredBy    String     @default("")
+  workType      String     @default("")
+  description   String     @default("")
+  status        LeadStatus @default(NEW)
+  siteVisitDate DateTime?
+  quoteDate     DateTime?
+  quoteValue    Float?
+  lostReason    String     @default("")
+  outcomeDate   DateTime?
+  finalJobValue Float?
+  jobType       String     @default("")
+  jobDate       DateTime?
+  followUpDate  DateTime?
+  notes         String     @default("")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([status])
+  @@index([followUpDate])
+  @@index([createdAt])
+}
+
 enum CostCategory {
   MATERIALS
   WAGES

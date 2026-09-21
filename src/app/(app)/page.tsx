@@ -389,7 +389,7 @@ function MoneyPeriodHeader({
           {showArrows && prev && (
             <Link
               href={`/?range=${rangeKey}&date=${prev}`}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-stone-500 hover:bg-stone-100"
               aria-label={rangeKey === "week" ? "Previous week" : "Previous month"}
             >
               <ChevronLeftIcon className="h-5 w-5" />
@@ -401,7 +401,7 @@ function MoneyPeriodHeader({
           {showArrows && next && (
             <Link
               href={`/?range=${rangeKey}&date=${next}`}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-stone-500 hover:bg-stone-100"
               aria-label={rangeKey === "week" ? "Next week" : "Next month"}
             >
               <ChevronRightIcon className="h-5 w-5" />

@@ -190,6 +190,7 @@ enum LeadStatus {
 enum LeadQuoteJobType {
   ONE_OFF
   RECURRING
+  BOTH
 }
 
 enum LeadPricingModel {
@@ -234,6 +235,17 @@ model Lead {
   hourlyRate    Float?
   estimatedHours Float?
   estimatedWorkers Int?
+  recurringPricingModel LeadPricingModel @default(PER_VISIT)
+  recurringFrequency LeadFrequency @default(WEEKLY)
+  recurringFrequencyDetail String @default("")
+  recurringCustomVisitsPerYear Float?
+  recurringQuoteValue Float?
+  recurringHourlyRate Float?
+  recurringEstimatedHours Float?
+  recurringEstimatedWorkers Int?
+  verbalQuoteGiven Boolean @default(false)
+  verbalQuoteAgreed Boolean @default(false)
+  formalEstimateSent Boolean @default(false)
   lostReason    String     @default("")
   outcomeDate   DateTime?
   finalJobValue Float?

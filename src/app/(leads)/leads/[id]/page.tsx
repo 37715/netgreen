@@ -31,7 +31,20 @@ export default async function LeadDetailPage({
   if (!lead) notFound();
   const quote = calculateLeadQuote(lead);
   const quoteHeadline =
-    quote.oneOffValue != null
+    lead.quoteJobType === "BOTH"
+      ? [
+            quote.oneOffValue != null
+              ? `${formatMoney(quote.oneOffValue)} initial`
+              : "",
+            quote.perVisitValue != null
+              ? `${formatMoney(quote.perVisitValue)}/visit`
+              : quote.monthlyValue != null
+                ? `${formatMoney(quote.monthlyValue)}/month`
+                : "",
+          ]
+            .filter(Boolean)
+            .join(" + ") || "Not priced yet"
+      : quote.oneOffValue != null
       ? `${formatMoney(quote.oneOffValue)} one-off`
       : quote.perVisitValue != null
         ? `${formatMoney(quote.perVisitValue)} per visit`
@@ -45,20 +58,43 @@ export default async function LeadDetailPage({
     lead.estimatedWorkers != null
       ? `${lead.estimatedWorkers} × ${formatMoney(lead.hourlyRate)}/hr × ${lead.estimatedHours} hrs`
       : "",
+    lead.quoteJobType === "BOTH" &&
+    lead.recurringPricingModel === "HOURLY" &&
+    lead.recurringHourlyRate != null &&
+    lead.recurringEstimatedHours != null &&
+    lead.recurringEstimatedWorkers != null
+      ? `Maintenance: ${lead.recurringEstimatedWorkers} × ${formatMoney(
+          lead.recurringHourlyRate
+        )}/hr × ${lead.recurringEstimatedHours} hrs`
+      : "",
     quote.perVisitValue != null && quote.monthlyValue != null
       ? `≈ ${formatMoney(quote.monthlyValue)} per month`
       : "",
-    lead.quoteJobType === "RECURRING"
-      ? lead.frequency === "CUSTOM"
+    lead.quoteJobType === "RECURRING" || lead.quoteJobType === "BOTH"
+      ? (lead.quoteJobType === "BOTH"
+          ? lead.recurringFrequency
+          : lead.frequency) === "CUSTOM"
         ? [
-            lead.customVisitsPerYear
-              ? `${lead.customVisitsPerYear} visits/year`
+            (lead.quoteJobType === "BOTH"
+              ? lead.recurringCustomVisitsPerYear
+              : lead.customVisitsPerYear)
+              ? `${
+                  lead.quoteJobType === "BOTH"
+                    ? lead.recurringCustomVisitsPerYear
+                    : lead.customVisitsPerYear
+                } visits/year`
               : "",
-            lead.frequencyDetail,
+            lead.quoteJobType === "BOTH"
+              ? lead.recurringFrequencyDetail
+              : lead.frequencyDetail,
           ]
             .filter(Boolean)
             .join(" · ")
-        : leadFrequencyLabels[lead.frequency]
+        : leadFrequencyLabels[
+            lead.quoteJobType === "BOTH"
+              ? lead.recurringFrequency
+              : lead.frequency
+          ]
       : "",
   ].filter(Boolean);
 
@@ -174,6 +210,20 @@ export default async function LeadDetailPage({
 
       <section className="mt-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
         <h2 className="font-display text-base font-bold text-brand-900">Quote details</h2>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <QuoteProgress
+            label="Verbal quote given"
+            complete={lead.verbalQuoteGiven}
+          />
+          <QuoteProgress
+            label="Verbal quote agreed"
+            complete={lead.verbalQuoteAgreed}
+          />
+          <QuoteProgress
+            label="Formal estimate sent"
+            complete={lead.formalEstimateSent}
+          />
+        </div>
         <dl className="mt-3 divide-y divide-stone-100 text-sm">
           <DetailRow label="Phone" value={lead.phone} href={lead.phone ? `tel:${lead.phone}` : undefined} />
           <DetailRow label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : undefined} />
@@ -189,36 +239,59 @@ export default async function LeadDetailPage({
           <DetailRow
             label="Work basis"
             value={
-              lead.quoteJobType === "RECURRING"
-                ? "Repeat maintenance"
-                : "One-off job"
-            }
-          />
-          <DetailRow
-            label="Price basis"
-            value={
               {
-                FIXED_TOTAL: "Fixed total",
-                PER_VISIT: "Per visit",
-                HOURLY: "Hourly",
-                MONTHLY: "Monthly fee",
-              }[lead.pricingModel]
+                ONE_OFF: "One-off job",
+                RECURRING: "Repeat maintenance",
+                BOTH: "One-off + regular maintenance",
+              }[lead.quoteJobType]
             }
           />
-          {lead.quoteJobType === "RECURRING" && (
+          {lead.quoteJobType === "BOTH" ? (
+            <>
+              <DetailRow
+                label="Initial price basis"
+                value={pricingModelLabel(lead.pricingModel)}
+              />
+              <DetailRow
+                label="Maintenance basis"
+                value={pricingModelLabel(lead.recurringPricingModel)}
+              />
+            </>
+          ) : (
+            <DetailRow
+              label="Price basis"
+              value={pricingModelLabel(lead.pricingModel)}
+            />
+          )}
+          {(lead.quoteJobType === "RECURRING" ||
+            lead.quoteJobType === "BOTH") && (
             <DetailRow
               label="Frequency"
               value={
-                lead.frequency === "CUSTOM"
+                (lead.quoteJobType === "BOTH"
+                  ? lead.recurringFrequency
+                  : lead.frequency) === "CUSTOM"
                   ? [
-                      lead.customVisitsPerYear
-                        ? `${lead.customVisitsPerYear} visits/year`
+                      (lead.quoteJobType === "BOTH"
+                        ? lead.recurringCustomVisitsPerYear
+                        : lead.customVisitsPerYear)
+                        ? `${
+                            lead.quoteJobType === "BOTH"
+                              ? lead.recurringCustomVisitsPerYear
+                              : lead.customVisitsPerYear
+                          } visits/year`
                         : "",
-                      lead.frequencyDetail,
+                      lead.quoteJobType === "BOTH"
+                        ? lead.recurringFrequencyDetail
+                        : lead.frequencyDetail,
                     ]
                       .filter(Boolean)
                       .join(" · ")
-                  : leadFrequencyLabels[lead.frequency]
+                  : leadFrequencyLabels[
+                      lead.quoteJobType === "BOTH"
+                        ? lead.recurringFrequency
+                        : lead.frequency
+                    ]
               }
             />
           )}
@@ -270,6 +343,18 @@ export default async function LeadDetailPage({
               hourlyRate: lead.hourlyRate,
               estimatedHours: lead.estimatedHours,
               estimatedWorkers: lead.estimatedWorkers,
+              recurringPricingModel: lead.recurringPricingModel,
+              recurringFrequency: lead.recurringFrequency,
+              recurringFrequencyDetail: lead.recurringFrequencyDetail,
+              recurringCustomVisitsPerYear:
+                lead.recurringCustomVisitsPerYear,
+              recurringQuoteValue: lead.recurringQuoteValue,
+              recurringHourlyRate: lead.recurringHourlyRate,
+              recurringEstimatedHours: lead.recurringEstimatedHours,
+              recurringEstimatedWorkers: lead.recurringEstimatedWorkers,
+              verbalQuoteGiven: lead.verbalQuoteGiven,
+              verbalQuoteAgreed: lead.verbalQuoteAgreed,
+              formalEstimateSent: lead.formalEstimateSent,
               lostReason: lead.lostReason,
               outcomeDate: lead.outcomeDate ? toDateInput(lead.outcomeDate) : undefined,
               finalJobValue: lead.finalJobValue,
@@ -285,6 +370,45 @@ export default async function LeadDetailPage({
       <div className="mt-4">
         <ConfirmDeleteLead id={lead.id} action={deleteLead} />
       </div>
+    </div>
+  );
+}
+
+function pricingModelLabel(value: string): string {
+  return (
+    {
+      FIXED_TOTAL: "Fixed total",
+      PER_VISIT: "Per visit",
+      HOURLY: "Hourly",
+      MONTHLY: "Monthly fee",
+    }[value] ?? value
+  );
+}
+
+function QuoteProgress({
+  label,
+  complete,
+}: {
+  label: string;
+  complete: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${
+        complete
+          ? "border-lime-200 bg-lime-50 text-lime-800"
+          : "border-stone-200 bg-stone-50 text-stone-400"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+          complete ? "bg-lime-600 text-white" : "bg-stone-200 text-stone-500"
+        }`}
+      >
+        {complete ? "✓" : "–"}
+      </span>
+      {label}
     </div>
   );
 }

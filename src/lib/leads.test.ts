@@ -4,6 +4,7 @@ import { fromDateInput } from "./dates";
 import {
   calculateLeadQuote,
   calculateLeadStats,
+  followUpDateForPreset,
   isFollowUpDue,
 } from "./leads";
 
@@ -91,6 +92,37 @@ describe("calculateLeadQuote", () => {
 
     assert.equal(quote.visitsPerMonth, 8 / 12);
     assert.equal(quote.monthlyValue, 40);
+  });
+
+  it("keeps the initial job and ongoing maintenance values on a combined quote", () => {
+    const quote = calculateLeadQuote({
+      quoteJobType: "BOTH",
+      pricingModel: "FIXED_TOTAL",
+      quoteValue: 750,
+      frequency: "ONCE",
+      recurringPricingModel: "PER_VISIT",
+      recurringQuoteValue: 60,
+      recurringFrequency: "FORTNIGHTLY",
+    });
+
+    assert.equal(quote.oneOffValue, 750);
+    assert.equal(quote.perVisitValue, 60);
+    assert.equal(quote.monthlyValue, 130);
+    assert.equal(quote.visitsPerMonth, 26 / 12);
+  });
+});
+
+describe("followUpDateForPreset", () => {
+  const today = fromDateInput("2026-10-01");
+
+  it("resolves one and two weeks from today", () => {
+    assert.equal(followUpDateForPreset("ONE_WEEK", today), "2026-10-08");
+    assert.equal(followUpDateForPreset("TWO_WEEKS", today), "2026-10-15");
+  });
+
+  it("leaves manual and no-follow-up dates to the form", () => {
+    assert.equal(followUpDateForPreset("MANUAL", today), null);
+    assert.equal(followUpDateForPreset("NONE", today), null);
   });
 });
 

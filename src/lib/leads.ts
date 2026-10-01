@@ -1,4 +1,4 @@
-import { calendarDayKey } from "@/lib/dates";
+import { addDays, calendarDayKey, toDateInput } from "@/lib/dates";
 
 export const LEAD_STATUSES = [
   "NEW",
@@ -52,7 +52,18 @@ export const leadWorkTypeOptions = [
 
 export const salesmanOptions = ["Howard", "Hugo"] as const;
 
-export const LEAD_QUOTE_JOB_TYPES = ["ONE_OFF", "RECURRING"] as const;
+export const leadAreaOptions = [
+  "Havant PO9",
+  "Hayling Island PO11",
+  "Emsworth PO10",
+  "Waterlooville PO7",
+  "Waterlooville PO8",
+  "Portsmouth PO1",
+  "Southsea PO4",
+  "Southsea PO5",
+] as const;
+
+export const LEAD_QUOTE_JOB_TYPES = ["ONE_OFF", "RECURRING", "BOTH"] as const;
 export type LeadQuoteJobTypeValue = (typeof LEAD_QUOTE_JOB_TYPES)[number];
 
 export const LEAD_PRICING_MODELS = [
@@ -91,6 +102,13 @@ export type LeadQuoteInput = {
   estimatedWorkers?: number | null;
   frequency?: string;
   customVisitsPerYear?: number | null;
+  recurringPricingModel?: string | null;
+  recurringQuoteValue?: number | null;
+  recurringHourlyRate?: number | null;
+  recurringEstimatedHours?: number | null;
+  recurringEstimatedWorkers?: number | null;
+  recurringFrequency?: string | null;
+  recurringCustomVisitsPerYear?: number | null;
 };
 
 function positive(value: number | null | undefined): number | null {
@@ -137,6 +155,29 @@ export function calculateLeadQuote(input: LeadQuoteInput): {
       ? roundMoney(rate * hours * workers)
       : null;
 
+  if (jobType === "BOTH") {
+    const oneOff = calculateLeadQuote({
+      ...input,
+      quoteJobType: "ONE_OFF",
+    });
+    const recurring = calculateLeadQuote({
+      quoteJobType: "RECURRING",
+      pricingModel: input.recurringPricingModel ?? "PER_VISIT",
+      quoteValue: input.recurringQuoteValue ?? null,
+      hourlyRate: input.recurringHourlyRate,
+      estimatedHours: input.recurringEstimatedHours,
+      estimatedWorkers: input.recurringEstimatedWorkers,
+      frequency: input.recurringFrequency ?? "WEEKLY",
+      customVisitsPerYear: input.recurringCustomVisitsPerYear,
+    });
+    return {
+      oneOffValue: oneOff.oneOffValue,
+      perVisitValue: recurring.perVisitValue,
+      monthlyValue: recurring.monthlyValue,
+      visitsPerMonth: recurring.visitsPerMonth,
+    };
+  }
+
   if (jobType !== "RECURRING") {
     return {
       oneOffValue: pricingModel === "HOURLY" ? hourlyEstimate : quoted,
@@ -169,6 +210,17 @@ export function calculateLeadQuote(input: LeadQuoteInput): {
         : null,
     visitsPerMonth,
   };
+}
+
+export type FollowUpPreset = "NONE" | "ONE_WEEK" | "TWO_WEEKS" | "MANUAL";
+
+export function followUpDateForPreset(
+  preset: FollowUpPreset,
+  today = new Date()
+): string | null {
+  if (preset === "ONE_WEEK") return toDateInput(addDays(today, 7));
+  if (preset === "TWO_WEEKS") return toDateInput(addDays(today, 14));
+  return null;
 }
 
 type LeadForStats = LeadQuoteInput & {

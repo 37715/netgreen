@@ -67,6 +67,12 @@ function readLead(formData: FormData) {
   const frequency = String(
     formData.get("frequency") || "ONCE"
   ) as LeadFrequencyValue;
+  const recurringPricingModel = String(
+    formData.get("recurringPricingModel") || "PER_VISIT"
+  ) as LeadPricingModelValue;
+  const recurringFrequency = String(
+    formData.get("recurringFrequency") || "WEEKLY"
+  ) as LeadFrequencyValue;
 
   if (!LEAD_QUOTE_JOB_TYPES.includes(quoteJobType)) {
     throw new Error("Invalid quote job type");
@@ -78,7 +84,7 @@ function readLead(formData: FormData) {
     throw new Error("Invalid frequency");
   }
   if (
-    quoteJobType === "ONE_OFF" &&
+    (quoteJobType === "ONE_OFF" || quoteJobType === "BOTH") &&
     !["FIXED_TOTAL", "HOURLY"].includes(pricingModel)
   ) {
     throw new Error("Invalid one-off pricing model");
@@ -92,13 +98,39 @@ function readLead(formData: FormData) {
   if (quoteJobType === "RECURRING" && frequency === "ONCE") {
     throw new Error("Recurring work needs a frequency");
   }
+  if (
+    quoteJobType === "BOTH" &&
+    !["PER_VISIT", "HOURLY", "MONTHLY"].includes(recurringPricingModel)
+  ) {
+    throw new Error("Invalid maintenance pricing model");
+  }
+  if (
+    quoteJobType === "BOTH" &&
+    !LEAD_FREQUENCIES.includes(recurringFrequency)
+  ) {
+    throw new Error("Invalid maintenance frequency");
+  }
+  if (quoteJobType === "BOTH" && recurringFrequency === "ONCE") {
+    throw new Error("Maintenance work needs a frequency");
+  }
   const customVisitsPerYear = optionalAmount(formData, "customVisitsPerYear");
+  const recurringCustomVisitsPerYear = optionalAmount(
+    formData,
+    "recurringCustomVisitsPerYear"
+  );
   if (
     quoteJobType === "RECURRING" &&
     frequency === "CUSTOM" &&
     (!customVisitsPerYear || customVisitsPerYear <= 0)
   ) {
     throw new Error("Custom frequency needs visits per year");
+  }
+  if (
+    quoteJobType === "BOTH" &&
+    recurringFrequency === "CUSTOM" &&
+    (!recurringCustomVisitsPerYear || recurringCustomVisitsPerYear <= 0)
+  ) {
+    throw new Error("Custom maintenance frequency needs visits per year");
   }
 
   return {
@@ -127,6 +159,28 @@ function readLead(formData: FormData) {
     hourlyRate: optionalAmount(formData, "hourlyRate"),
     estimatedHours: optionalAmount(formData, "estimatedHours"),
     estimatedWorkers: optionalPositiveInteger(formData, "estimatedWorkers"),
+    recurringPricingModel: recurringPricingModel as LeadPricingModel,
+    recurringFrequency: recurringFrequency as LeadFrequency,
+    recurringFrequencyDetail: String(
+      formData.get("recurringFrequencyDetail") || ""
+    ).trim(),
+    recurringCustomVisitsPerYear:
+      quoteJobType === "BOTH" && recurringFrequency === "CUSTOM"
+        ? recurringCustomVisitsPerYear
+        : null,
+    recurringQuoteValue: optionalAmount(formData, "recurringQuoteValue"),
+    recurringHourlyRate: optionalAmount(formData, "recurringHourlyRate"),
+    recurringEstimatedHours: optionalAmount(
+      formData,
+      "recurringEstimatedHours"
+    ),
+    recurringEstimatedWorkers: optionalPositiveInteger(
+      formData,
+      "recurringEstimatedWorkers"
+    ),
+    verbalQuoteGiven: String(formData.get("verbalQuoteGiven")) === "on",
+    verbalQuoteAgreed: String(formData.get("verbalQuoteAgreed")) === "on",
+    formalEstimateSent: String(formData.get("formalEstimateSent")) === "on",
     lostReason: String(formData.get("lostReason") || "").trim(),
     outcomeDate: optionalDate(formData, "outcomeDate"),
     finalJobValue: optionalAmount(formData, "finalJobValue"),
@@ -162,6 +216,16 @@ export async function updateLead(formData: FormData) {
   if (!formData.has("finalJobValue")) data.finalJobValue = existing.finalJobValue;
   if (!formData.has("jobType")) data.jobType = existing.jobType;
   if (!formData.has("jobDate")) data.jobDate = existing.jobDate;
+  if (!formData.has("recurringPricingModel")) {
+    data.recurringPricingModel = existing.recurringPricingModel;
+    data.recurringFrequency = existing.recurringFrequency;
+    data.recurringFrequencyDetail = existing.recurringFrequencyDetail;
+    data.recurringCustomVisitsPerYear = existing.recurringCustomVisitsPerYear;
+    data.recurringQuoteValue = existing.recurringQuoteValue;
+    data.recurringHourlyRate = existing.recurringHourlyRate;
+    data.recurringEstimatedHours = existing.recurringEstimatedHours;
+    data.recurringEstimatedWorkers = existing.recurringEstimatedWorkers;
+  }
 
   await prisma.lead.update({ where: { id }, data });
   revalidatePath("/leads");

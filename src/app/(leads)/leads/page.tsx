@@ -182,11 +182,16 @@ export default async function LeadsPage({
                         {quote.oneOffValue != null &&
                           `${formatMoney(quote.oneOffValue)} one-off`}
                         {quote.perVisitValue != null &&
-                          `${formatMoney(quote.perVisitValue)}/visit`}
+                          `${quote.oneOffValue != null ? " · " : ""}${formatMoney(
+                            quote.perVisitValue
+                          )}/visit`}
                         {quote.monthlyValue != null &&
-                          `${quote.perVisitValue != null ? " · " : ""}${formatMoney(
-                            quote.monthlyValue
-                          )}/month`}
+                          `${
+                            quote.oneOffValue != null ||
+                            quote.perVisitValue != null
+                              ? " · "
+                              : ""
+                          }${formatMoney(quote.monthlyValue)}/month`}
                       </div>
                     )}
                   </div>

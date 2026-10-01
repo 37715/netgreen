@@ -84,6 +84,48 @@ export const LEAD_FREQUENCIES = [
 ] as const;
 export type LeadFrequencyValue = (typeof LEAD_FREQUENCIES)[number];
 
+export type LeadQuoteDraft = {
+  pricingModel: LeadPricingModelValue;
+  frequency: LeadFrequencyValue;
+  frequencyDetail: string;
+  customVisitsPerYear: string;
+  quoteValue: string;
+  hourlyRate: string;
+  estimatedHours: string;
+  estimatedWorkers: string;
+};
+
+export type LeadQuoteDraftState = {
+  quoteJobType: LeadQuoteJobTypeValue;
+  primary: LeadQuoteDraft;
+  oneOffDraft: LeadQuoteDraft;
+  recurringDraft: LeadQuoteDraft;
+  maintenance: LeadQuoteDraft;
+};
+
+export function transitionLeadQuoteDrafts(
+  state: LeadQuoteDraftState,
+  nextJobType: LeadQuoteJobTypeValue
+): LeadQuoteDraftState {
+  const oneOffDraft =
+    state.quoteJobType === "RECURRING" ? state.oneOffDraft : state.primary;
+  const recurringDraft =
+    state.quoteJobType === "BOTH"
+      ? state.maintenance
+      : state.quoteJobType === "RECURRING"
+        ? state.primary
+        : state.recurringDraft;
+
+  return {
+    quoteJobType: nextJobType,
+    primary: nextJobType === "RECURRING" ? recurringDraft : oneOffDraft,
+    oneOffDraft,
+    recurringDraft,
+    maintenance:
+      nextJobType === "BOTH" ? recurringDraft : state.maintenance,
+  };
+}
+
 export const leadFrequencyLabels: Record<LeadFrequencyValue, string> = {
   ONCE: "One-off",
   WEEKLY: "Weekly",

@@ -6,6 +6,7 @@ import {
   calculateLeadStats,
   followUpDateForPreset,
   isFollowUpDue,
+  transitionLeadQuoteDrafts,
 } from "./leads";
 
 describe("calculateLeadQuote", () => {
@@ -123,6 +124,66 @@ describe("followUpDateForPreset", () => {
   it("leaves manual and no-follow-up dates to the form", () => {
     assert.equal(followUpDateForPreset("MANUAL", today), null);
     assert.equal(followUpDateForPreset("NONE", today), null);
+  });
+});
+
+describe("transitionLeadQuoteDrafts", () => {
+  const blankOneOff = {
+    pricingModel: "FIXED_TOTAL" as const,
+    frequency: "ONCE" as const,
+    frequencyDetail: "",
+    customVisitsPerYear: "",
+    quoteValue: "",
+    hourlyRate: "",
+    estimatedHours: "",
+    estimatedWorkers: "1",
+  };
+  const fortnightlyMaintenance = {
+    pricingModel: "PER_VISIT" as const,
+    frequency: "FORTNIGHTLY" as const,
+    frequencyDetail: "",
+    customVisitsPerYear: "",
+    quoteValue: "60",
+    hourlyRate: "",
+    estimatedHours: "",
+    estimatedWorkers: "1",
+  };
+
+  it("moves a recurring-only price into maintenance when combined is selected", () => {
+    const next = transitionLeadQuoteDrafts(
+      {
+        quoteJobType: "RECURRING",
+        primary: fortnightlyMaintenance,
+        oneOffDraft: blankOneOff,
+        recurringDraft: fortnightlyMaintenance,
+        maintenance: fortnightlyMaintenance,
+      },
+      "BOTH"
+    );
+
+    assert.deepEqual(next.primary, blankOneOff);
+    assert.deepEqual(next.maintenance, fortnightlyMaintenance);
+  });
+
+  it("restores both components after switching combined to recurring and back", () => {
+    const initialWork = {
+      ...blankOneOff,
+      quoteValue: "750",
+    };
+    const combined = {
+      quoteJobType: "BOTH" as const,
+      primary: initialWork,
+      oneOffDraft: initialWork,
+      recurringDraft: fortnightlyMaintenance,
+      maintenance: fortnightlyMaintenance,
+    };
+
+    const recurring = transitionLeadQuoteDrafts(combined, "RECURRING");
+    const restored = transitionLeadQuoteDrafts(recurring, "BOTH");
+
+    assert.deepEqual(recurring.primary, fortnightlyMaintenance);
+    assert.deepEqual(restored.primary, initialWork);
+    assert.deepEqual(restored.maintenance, fortnightlyMaintenance);
   });
 });
 

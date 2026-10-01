@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   calculateLeadQuote,
   followUpDateForPreset,
@@ -12,9 +12,11 @@ import {
   leadStatusLabels,
   leadWorkTypeOptions,
   salesmanOptions,
+  transitionLeadQuoteDrafts,
   type FollowUpPreset,
   type LeadFrequencyValue,
   type LeadPricingModelValue,
+  type LeadQuoteDraft,
   type LeadQuoteJobTypeValue,
   type LeadStatusValue,
 } from "@/lib/leads";
@@ -83,6 +85,9 @@ export function LeadForm({
   const [frequency, setFrequency] = useState<LeadFrequencyValue>(
     defaults.frequency ?? "ONCE"
   );
+  const [frequencyDetail, setFrequencyDetail] = useState(
+    defaults.frequencyDetail ?? ""
+  );
   const [quoteValue, setQuoteValue] = useState(
     defaults.quoteValue == null ? "" : String(defaults.quoteValue)
   );
@@ -106,6 +111,9 @@ export function LeadForm({
     );
   const [recurringFrequency, setRecurringFrequency] =
     useState<LeadFrequencyValue>(defaults.recurringFrequency ?? "WEEKLY");
+  const [recurringFrequencyDetail, setRecurringFrequencyDetail] = useState(
+    defaults.recurringFrequencyDetail ?? ""
+  );
   const [recurringCustomVisitsPerYear, setRecurringCustomVisitsPerYear] =
     useState(
       defaults.recurringCustomVisitsPerYear == null
@@ -136,6 +144,92 @@ export function LeadForm({
     defaults.followUpDate ? "MANUAL" : "NONE"
   );
   const [followUpDate, setFollowUpDate] = useState(defaults.followUpDate ?? "");
+  const defaultIsRecurring = defaults.quoteJobType === "RECURRING";
+  const oneOffDraftRef = useRef<LeadQuoteDraft>({
+    pricingModel: defaultIsRecurring
+      ? "FIXED_TOTAL"
+      : defaults.pricingModel ?? "FIXED_TOTAL",
+    frequency: "ONCE",
+    frequencyDetail: "",
+    customVisitsPerYear: "",
+    quoteValue:
+      defaultIsRecurring || defaults.quoteValue == null
+        ? ""
+        : String(defaults.quoteValue),
+    hourlyRate:
+      defaultIsRecurring || defaults.hourlyRate == null
+        ? ""
+        : String(defaults.hourlyRate),
+    estimatedHours:
+      defaultIsRecurring || defaults.estimatedHours == null
+        ? ""
+        : String(defaults.estimatedHours),
+    estimatedWorkers:
+      defaultIsRecurring || defaults.estimatedWorkers == null
+        ? "1"
+        : String(defaults.estimatedWorkers),
+  });
+  const recurringDraftRef = useRef<LeadQuoteDraft>({
+    pricingModel: defaultIsRecurring
+      ? defaults.pricingModel ?? "PER_VISIT"
+      : defaults.recurringPricingModel ?? "PER_VISIT",
+    frequency: defaultIsRecurring
+      ? defaults.frequency ?? "WEEKLY"
+      : defaults.recurringFrequency ?? "WEEKLY",
+    frequencyDetail: defaultIsRecurring
+      ? defaults.frequencyDetail ?? ""
+      : defaults.recurringFrequencyDetail ?? "",
+    customVisitsPerYear:
+      (defaultIsRecurring
+        ? defaults.customVisitsPerYear
+        : defaults.recurringCustomVisitsPerYear) == null
+        ? ""
+        : String(
+            defaultIsRecurring
+              ? defaults.customVisitsPerYear
+              : defaults.recurringCustomVisitsPerYear
+          ),
+    quoteValue:
+      (defaultIsRecurring
+        ? defaults.quoteValue
+        : defaults.recurringQuoteValue) == null
+        ? ""
+        : String(
+            defaultIsRecurring
+              ? defaults.quoteValue
+              : defaults.recurringQuoteValue
+          ),
+    hourlyRate:
+      (defaultIsRecurring
+        ? defaults.hourlyRate
+        : defaults.recurringHourlyRate) == null
+        ? ""
+        : String(
+            defaultIsRecurring
+              ? defaults.hourlyRate
+              : defaults.recurringHourlyRate
+          ),
+    estimatedHours:
+      (defaultIsRecurring
+        ? defaults.estimatedHours
+        : defaults.recurringEstimatedHours) == null
+        ? ""
+        : String(
+            defaultIsRecurring
+              ? defaults.estimatedHours
+              : defaults.recurringEstimatedHours
+          ),
+    estimatedWorkers:
+      (defaultIsRecurring
+        ? defaults.estimatedWorkers
+        : defaults.recurringEstimatedWorkers) == null
+        ? "1"
+        : String(
+            defaultIsRecurring
+              ? defaults.estimatedWorkers
+              : defaults.recurringEstimatedWorkers
+          ),
+  });
   const quote = useMemo(
     () =>
       calculateLeadQuote({
@@ -188,19 +282,56 @@ export function LeadForm({
 
   function chooseJobType(value: LeadQuoteJobTypeValue) {
     if (value === quoteJobType) return;
+    const transitioned = transitionLeadQuoteDrafts(
+      {
+        quoteJobType,
+        primary: {
+          pricingModel,
+          frequency,
+          frequencyDetail,
+          customVisitsPerYear,
+          quoteValue,
+          hourlyRate,
+          estimatedHours,
+          estimatedWorkers,
+        },
+        oneOffDraft: oneOffDraftRef.current,
+        recurringDraft: recurringDraftRef.current,
+        maintenance: {
+          pricingModel: recurringPricingModel,
+          frequency: recurringFrequency,
+          frequencyDetail: recurringFrequencyDetail,
+          customVisitsPerYear: recurringCustomVisitsPerYear,
+          quoteValue: recurringQuoteValue,
+          hourlyRate: recurringHourlyRate,
+          estimatedHours: recurringEstimatedHours,
+          estimatedWorkers: recurringEstimatedWorkers,
+        },
+      },
+      value
+    );
+
+    oneOffDraftRef.current = transitioned.oneOffDraft;
+    recurringDraftRef.current = transitioned.recurringDraft;
+    setPricingModel(transitioned.primary.pricingModel);
+    setFrequency(transitioned.primary.frequency);
+    setFrequencyDetail(transitioned.primary.frequencyDetail);
+    setCustomVisitsPerYear(transitioned.primary.customVisitsPerYear);
+    setQuoteValue(transitioned.primary.quoteValue);
+    setHourlyRate(transitioned.primary.hourlyRate);
+    setEstimatedHours(transitioned.primary.estimatedHours);
+    setEstimatedWorkers(transitioned.primary.estimatedWorkers);
+    setRecurringPricingModel(transitioned.maintenance.pricingModel);
+    setRecurringFrequency(transitioned.maintenance.frequency);
+    setRecurringFrequencyDetail(transitioned.maintenance.frequencyDetail);
+    setRecurringCustomVisitsPerYear(
+      transitioned.maintenance.customVisitsPerYear
+    );
+    setRecurringQuoteValue(transitioned.maintenance.quoteValue);
+    setRecurringHourlyRate(transitioned.maintenance.hourlyRate);
+    setRecurringEstimatedHours(transitioned.maintenance.estimatedHours);
+    setRecurringEstimatedWorkers(transitioned.maintenance.estimatedWorkers);
     setQuoteJobType(value);
-    if (value === "ONE_OFF") {
-      setPricingModel("FIXED_TOTAL");
-      setFrequency("ONCE");
-    } else if (value === "RECURRING") {
-      setPricingModel("PER_VISIT");
-      setFrequency("WEEKLY");
-    } else {
-      setPricingModel("FIXED_TOTAL");
-      setFrequency("ONCE");
-      setRecurringPricingModel("PER_VISIT");
-      setRecurringFrequency("WEEKLY");
-    }
   }
 
   function chooseFollowUpPreset(value: FollowUpPreset) {
@@ -517,7 +648,10 @@ export function LeadForm({
                 <Field label="Frequency detail" wide>
                   <input
                     name="frequencyDetail"
-                    defaultValue={defaults.frequencyDetail}
+                    value={frequencyDetail}
+                    onChange={(event) =>
+                      setFrequencyDetail(event.target.value)
+                    }
                     className="input"
                     placeholder="e.g. monthly in summer, every 8 weeks in winter"
                   />
@@ -677,7 +811,10 @@ export function LeadForm({
                 <Field label="Frequency detail" wide>
                   <input
                     name="recurringFrequencyDetail"
-                    defaultValue={defaults.recurringFrequencyDetail}
+                    value={recurringFrequencyDetail}
+                    onChange={(event) =>
+                      setRecurringFrequencyDetail(event.target.value)
+                    }
                     className="input"
                     placeholder="e.g. monthly in summer, every 8 weeks in winter"
                   />
@@ -982,7 +1119,7 @@ function PricingButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+      className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
         active
           ? "border-brand-700 bg-brand-700 text-white"
           : "border-stone-200 bg-white text-stone-600"

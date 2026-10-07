@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   editableInvoiceTotals,
+  hourlyInvoiceAmount,
   invoiceLineDetail,
   invoiceNumber,
   invoiceSettingsFromFormData,
@@ -67,6 +68,16 @@ describe("editableInvoiceTotals", () => {
       paid: 0,
       balance: 49.98,
     });
+  });
+});
+
+describe("hourlyInvoiceAmount", () => {
+  it("uses people, hours, and hourly rate", () => {
+    assert.equal(hourlyInvoiceAmount(2, 6.5, 35), 455);
+  });
+
+  it("rounds the hourly amount to pennies", () => {
+    assert.equal(hourlyInvoiceAmount(3, 1.25, 19.99), 74.96);
   });
 });
 

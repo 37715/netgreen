@@ -361,6 +361,10 @@ textarea.invoice-edit-field {
   text-align: left;
 }
 
+.invoice-lines-hourly th:first-child {
+  width: 46%;
+}
+
 .invoice-lines th:not(:first-child),
 .invoice-lines td:not(:first-child) {
   text-align: right;
@@ -387,6 +391,12 @@ textarea.invoice-edit-field {
 
 .invoice-lines td:not(:first-child) .invoice-print-value {
   text-align: right;
+}
+
+.invoice-calculated-amount {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .invoice-number-field {

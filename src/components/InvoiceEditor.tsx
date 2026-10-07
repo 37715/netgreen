@@ -10,7 +10,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { saveInvoiceDefaults } from "@/app/actions/invoice";
-import { editableInvoiceTotals } from "@/lib/invoice";
+import { editableInvoiceTotals, hourlyInvoiceAmount } from "@/lib/invoice";
 import { formatMoney } from "@/lib/money";
 
 export type InvoiceEditorData = {
@@ -29,8 +29,12 @@ export type InvoiceEditorData = {
   dueDate: string;
   description: string;
   detail: string;
+  pricingType: "FIXED" | "HOURLY";
   quantity: number;
   unitPrice: number;
+  workers: number;
+  hours: number;
+  hourlyRate: number;
   paid: number;
   bankName: string;
   accountNumber: string;
@@ -120,9 +124,15 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
   const [dueDate, setDueDate] = useState(initial.dueDate);
   const [description, setDescription] = useState(initial.description);
   const [detail, setDetail] = useState(initial.detail);
+  const [pricingType, setPricingType] = useState(initial.pricingType);
   const [quantity, setQuantity] = useState(initial.quantity);
   const [unitPrice, setUnitPrice] = useState(initial.unitPrice);
-  const [amount, setAmount] = useState(initial.quantity * initial.unitPrice);
+  const [fixedAmount, setFixedAmount] = useState(
+    initial.quantity * initial.unitPrice
+  );
+  const [workers, setWorkers] = useState(initial.workers);
+  const [hours, setHours] = useState(initial.hours);
+  const [hourlyRate, setHourlyRate] = useState(initial.hourlyRate);
   const [paid, setPaid] = useState(initial.paid);
   const [bankName, setBankName] = useState(initial.bankName);
   const [accountNumber, setAccountNumber] = useState(initial.accountNumber);
@@ -131,18 +141,22 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, startSaving] = useTransition();
 
+  const amount =
+    pricingType === "HOURLY"
+      ? hourlyInvoiceAmount(workers, hours, hourlyRate)
+      : fixedAmount;
   const totals = editableInvoiceTotals(1, amount, paid);
 
   function updateQuantity(value: string) {
     const next = numericValue(value);
     setQuantity(next);
-    setAmount(next * unitPrice);
+    setFixedAmount(next * unitPrice);
   }
 
   function updateUnitPrice(value: string) {
     const next = numericValue(value);
     setUnitPrice(next);
-    setAmount(quantity * next);
+    setFixedAmount(quantity * next);
   }
 
   function saveDefaults() {
@@ -190,6 +204,35 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
               className="btn-primary"
             >
               Print / save PDF
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold text-stone-700">Invoice pricing:</span>
+          <div className="inline-flex rounded-xl border border-stone-200 bg-white p-1">
+            <button
+              type="button"
+              aria-pressed={pricingType === "FIXED"}
+              onClick={() => setPricingType("FIXED")}
+              className={`rounded-lg px-3 py-2 font-semibold ${
+                pricingType === "FIXED"
+                  ? "bg-brand-700 text-white"
+                  : "text-stone-600"
+              }`}
+            >
+              Fixed quote
+            </button>
+            <button
+              type="button"
+              aria-pressed={pricingType === "HOURLY"}
+              onClick={() => setPricingType("HOURLY")}
+              className={`rounded-lg px-3 py-2 font-semibold ${
+                pricingType === "HOURLY"
+                  ? "bg-brand-700 text-white"
+                  : "text-stone-600"
+              }`}
+            >
+              Hourly
             </button>
           </div>
         </div>
@@ -320,12 +363,26 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
           </dl>
         </section>
 
-        <table className="invoice-lines">
+        <table
+          className={`invoice-lines ${
+            pricingType === "HOURLY" ? "invoice-lines-hourly" : ""
+          }`}
+        >
           <thead>
             <tr>
               <th>Description</th>
-              <th>Quantity</th>
-              <th>Unit price</th>
+              {pricingType === "HOURLY" ? (
+                <>
+                  <th>People</th>
+                  <th>Hours</th>
+                  <th>Hourly rate</th>
+                </>
+              ) : (
+                <>
+                  <th>Quantity</th>
+                  <th>Unit price</th>
+                </>
+              )}
               <th>Amount</th>
             </tr>
           </thead>
@@ -346,32 +403,79 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                   placeholder="Job details"
                 />
               </td>
+              {pricingType === "HOURLY" ? (
+                <>
+                  <td>
+                    <input
+                      aria-label="Person count"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={workers}
+                      onChange={(event) =>
+                        setWorkers(numericValue(event.target.value))
+                      }
+                      className="invoice-edit-field invoice-number-field"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label="Hours"
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={hours}
+                      onChange={(event) =>
+                        setHours(numericValue(event.target.value))
+                      }
+                      className="invoice-edit-field invoice-number-field"
+                    />
+                  </td>
+                  <td>
+                    <MoneyEditor
+                      ariaLabel="Hourly rate"
+                      value={hourlyRate}
+                      onChange={setHourlyRate}
+                      currency={initial.currency}
+                    />
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td>
+                    <input
+                      aria-label="Quantity"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={quantity}
+                      onChange={(event) => updateQuantity(event.target.value)}
+                      className="invoice-edit-field invoice-number-field"
+                    />
+                  </td>
+                  <td>
+                    <MoneyEditor
+                      ariaLabel="Unit price"
+                      value={unitPrice}
+                      onChange={(value) => updateUnitPrice(String(value))}
+                      currency={initial.currency}
+                    />
+                  </td>
+                </>
+              )}
               <td>
-                <input
-                  aria-label="Quantity"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={quantity}
-                  onChange={(event) => updateQuantity(event.target.value)}
-                  className="invoice-edit-field invoice-number-field"
-                />
-              </td>
-              <td>
-                <MoneyEditor
-                  ariaLabel="Unit price"
-                  value={unitPrice}
-                  onChange={(value) => updateUnitPrice(String(value))}
-                  currency={initial.currency}
-                />
-              </td>
-              <td>
-                <MoneyEditor
-                  ariaLabel="Line amount"
-                  value={amount}
-                  onChange={setAmount}
-                  currency={initial.currency}
-                />
+                {pricingType === "HOURLY" ? (
+                  <span className="invoice-calculated-amount">
+                    {formatMoney(amount, initial.currency)}
+                  </span>
+                ) : (
+                  <MoneyEditor
+                    ariaLabel="Line amount"
+                    value={fixedAmount}
+                    onChange={setFixedAmount}
+                    currency={initial.currency}
+                  />
+                )}
               </td>
             </tr>
           </tbody>

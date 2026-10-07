@@ -7,6 +7,14 @@ function roundMoney(value: number): number {
   return Math.round((value + roundingTolerance) * 100) / 100;
 }
 
+export function hourlyInvoiceAmount(
+  workers: number,
+  hours: number,
+  hourlyRate: number
+): number {
+  return roundMoney(workers * hours * hourlyRate);
+}
+
 export function editableInvoiceTotals(
   quantity: number,
   unitPrice: number,

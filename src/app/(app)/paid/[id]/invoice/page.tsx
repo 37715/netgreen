@@ -41,6 +41,12 @@ export default async function PaidJobInvoicePage({
   const detail = invoiceLineDetail(job);
   const invoiceDate = job.completedAt ?? job.date;
   const customerName = job.customer?.name || "Customer";
+  const workers = job.workers && job.workers > 0 ? job.workers : 1;
+  const hours = job.hours && job.hours > 0 ? job.hours : 1;
+  const hourlyRate =
+    job.hourlyRate && job.hourlyRate > 0
+      ? job.hourlyRate
+      : totals.total / (workers * hours);
 
   return (
     <InvoiceEditor
@@ -60,8 +66,12 @@ export default async function PaidJobInvoicePage({
         dueDate: "On receipt",
         description: job.title,
         detail,
+        pricingType: job.pricingType,
         quantity: 1,
         unitPrice: totals.total,
+        workers,
+        hours,
+        hourlyRate,
         paid: totals.paid,
         bankName: settings.invoiceBankName,
         accountNumber: settings.invoiceAccountNumber,

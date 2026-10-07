@@ -11,9 +11,18 @@ datasource db {
 }
 
 model Settings {
-  id           Int      @id @default(1)
-  businessName String   @default("netgreen")
-  employeeRate Float    @default(20)
+  id                   Int      @id @default(1)
+  businessName         String   @default("netgreen")
+  employeeRate         Float    @default(20)
+  invoiceBusinessName  String   @default("EHW Landscapes")
+  invoicePhone         String   @default("07469237953")
+  invoiceEmail         String   @default("ehwlandscapes@gmail.com")
+  invoiceAddress       String   @default("PO11 0JB")
+  invoiceWebsite       String   @default("https://ehwlandscapes.com")
+  invoiceBankName      String   @default("")
+  invoiceAccountNumber String   @default("")
+  invoiceSortCode      String   @default("")
+  invoiceSigners       String   @default("Hugo Wheeler + Ellis Wheeler")
   // % of profit to set aside for self-assessment tax.
   taxPotPercent Float   @default(20)
   // Fallback £/bag so waste entered as bags alone still earns money.

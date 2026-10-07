@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { invoiceSettingsFromFormData } from "@/lib/invoice";
 import { parseAmount } from "@/lib/money";
 import { revalidatePath } from "next/cache";
 
@@ -13,15 +14,23 @@ export async function updateSettings(formData: FormData) {
     Math.max(0, parseAmount(formData.get("taxPotPercent")))
   );
   const wasteBagPrice = Math.max(0, parseAmount(formData.get("wasteBagPrice")));
+  const invoiceSettings = invoiceSettingsFromFormData(formData);
   await prisma.settings.upsert({
     where: { id: 1 },
-    update: { businessName, employeeRate, taxPotPercent, wasteBagPrice },
+    update: {
+      businessName,
+      employeeRate,
+      taxPotPercent,
+      wasteBagPrice,
+      ...invoiceSettings,
+    },
     create: {
       id: 1,
       businessName,
       employeeRate,
       taxPotPercent,
       wasteBagPrice,
+      ...invoiceSettings,
     },
   });
   revalidatePath("/", "layout");

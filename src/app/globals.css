@@ -189,3 +189,333 @@ body {
     display: none;
   }
 }
+
+/* EHW's printable job invoice mirrors the supplied paper invoice. */
+.invoice-document {
+  box-sizing: border-box;
+  width: min(100%, 210mm);
+  min-height: 297mm;
+  padding: 12mm 10mm 16mm;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+.invoice-header,
+.invoice-title-row,
+.invoice-parties,
+.invoice-footer {
+  display: flex;
+  justify-content: space-between;
+}
+
+.invoice-header {
+  min-height: 42mm;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.invoice-logo {
+  width: 62mm;
+  max-width: 48%;
+  height: auto;
+}
+
+.invoice-contact {
+  max-width: 48%;
+  color: #9a9a9a;
+  font-style: normal;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.invoice-title-row {
+  align-items: end;
+  border-bottom: 1px solid #aeb4af;
+  padding: 0 0 3mm;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.invoice-title-row h1 {
+  font: inherit;
+}
+
+.invoice-parties {
+  min-height: 42mm;
+  gap: 28px;
+  padding: 5mm 0 4mm;
+}
+
+.invoice-bill-to {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  width: 58%;
+  color: #909090;
+  line-height: 1.25;
+}
+
+.invoice-bill-to h2 {
+  color: #292929;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.invoice-green-label,
+.invoice-meta dt {
+  color: #4e7835;
+  font-weight: 800;
+}
+
+.invoice-meta {
+  width: 36%;
+  font-size: 12px;
+}
+
+.invoice-meta > div,
+.invoice-summary dl > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+}
+
+.invoice-meta dt {
+  text-align: right;
+}
+
+.invoice-meta dd {
+  min-width: 90px;
+  text-align: right;
+}
+
+.invoice-lines {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.invoice-lines th {
+  background: #4f812f;
+  color: white;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.invoice-lines th:first-child {
+  width: 58%;
+  text-align: left;
+}
+
+.invoice-lines th:not(:first-child),
+.invoice-lines td:not(:first-child) {
+  text-align: right;
+}
+
+.invoice-lines td {
+  border-bottom: 1px solid #d8d8d8;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.invoice-lines td:first-child strong,
+.invoice-lines td:first-child span {
+  display: block;
+}
+
+.invoice-lines td:first-child span {
+  margin-top: 3px;
+  color: #929292;
+  font-size: 11px;
+}
+
+.invoice-summary {
+  display: flex;
+  min-height: 25mm;
+  justify-content: flex-end;
+  padding: 6mm 0 2mm;
+}
+
+.invoice-summary dl {
+  width: 42%;
+  font-weight: 800;
+}
+
+.invoice-summary dt,
+.invoice-summary dd {
+  text-align: right;
+}
+
+.invoice-footer {
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.invoice-payment {
+  width: 42%;
+  padding-top: 2mm;
+  line-height: 1.55;
+}
+
+.invoice-payment h2 {
+  font-weight: 800;
+}
+
+.invoice-payment p:nth-of-type(2) {
+  margin-top: 4mm;
+}
+
+.invoice-balance-and-signatures {
+  width: 55%;
+}
+
+.invoice-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 14mm;
+  background: linear-gradient(90deg, #080808, #676767);
+  color: white;
+  padding: 0 8mm;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.invoice-balance strong {
+  font-size: 19px;
+}
+
+.invoice-signatures {
+  margin-left: auto;
+  width: 56mm;
+  padding-top: 4mm;
+  text-align: center;
+}
+
+.invoice-signature-lines {
+  display: grid;
+  gap: 8mm;
+  padding: 5mm 4mm 0;
+}
+
+.invoice-signature-lines span {
+  display: block;
+  height: 7mm;
+  border-bottom: 1px solid #252525;
+}
+
+.invoice-signatures > div {
+  margin-top: 1mm;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .invoice-document {
+    min-height: 0;
+    padding: 20px 16px 42px;
+    font-size: 9px;
+  }
+
+  .invoice-header {
+    min-height: 118px;
+  }
+
+  .invoice-title-row {
+    font-size: 18px;
+  }
+
+  .invoice-parties {
+    min-height: 118px;
+    gap: 10px;
+  }
+
+  .invoice-bill-to {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    width: 56%;
+  }
+
+  .invoice-bill-to h2 {
+    font-size: 14px;
+  }
+
+  .invoice-meta {
+    width: 42%;
+    font-size: 9px;
+  }
+
+  .invoice-meta > div {
+    gap: 6px;
+  }
+
+  .invoice-meta dd {
+    min-width: 58px;
+  }
+
+  .invoice-lines th,
+  .invoice-lines td {
+    padding: 5px 4px;
+    font-size: 8px;
+  }
+
+  .invoice-lines td:first-child span {
+    font-size: 8px;
+  }
+
+  .invoice-summary {
+    min-height: 72px;
+  }
+
+  .invoice-summary dl {
+    width: 52%;
+  }
+
+  .invoice-footer {
+    gap: 12px;
+  }
+
+  .invoice-balance-and-signatures {
+    width: 62%;
+  }
+
+  .invoice-balance {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 10px;
+  }
+
+  .invoice-balance strong {
+    font-size: 11px;
+  }
+
+  .invoice-signatures {
+    width: 120px;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  .invoice-page {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    background: white;
+  }
+
+  .invoice-document {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 12mm 10mm 16mm;
+    box-shadow: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

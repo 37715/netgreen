@@ -371,6 +371,19 @@ function PayControl({ job }: { job: PayJob }) {
   );
 }
 
+function InvoiceAction({ job }: { job: PayJob }) {
+  if (job.status !== "DONE") return null;
+
+  return (
+    <Link
+      href={`/paid/${job.id}/invoice`}
+      className="inline-flex min-h-11 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-2.5 text-xs font-bold text-brand-700 hover:border-brand-400"
+    >
+      Generate invoice
+    </Link>
+  );
+}
+
 function DayRow({ job, currency }: { job: PayJob; currency: string }) {
   const done = job.status === "DONE";
   return (
@@ -391,8 +404,9 @@ function DayRow({ job, currency }: { job: PayJob; currency: string }) {
       <span className="ledger shrink-0 text-sm font-semibold tabular-nums text-stone-700">
         {formatMoney(job.price, currency)}
       </span>
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
         <PayControl job={job} />
+        <InvoiceAction job={job} />
       </div>
     </div>
   );
@@ -410,8 +424,9 @@ function OwedRow({ job, currency }: { job: PayJob; currency: string }) {
       <span className="ledger shrink-0 text-sm font-semibold tabular-nums text-stone-700">
         {formatMoney(job.price, currency)}
       </span>
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
         <PayControl job={job} />
+        <InvoiceAction job={job} />
       </div>
     </div>
   );

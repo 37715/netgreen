@@ -71,8 +71,93 @@ export default async function SettingsPage() {
               never gets missed. You can still override it per job.
             </p>
           </div>
+          <div className="mt-2 border-t border-stone-200 pt-4 sm:col-span-2">
+            <h3 className="font-display text-base font-bold text-brand-900">
+              Invoice details
+            </h3>
+            <p className="mt-0.5 text-xs text-stone-500">
+              These details appear on every generated job invoice.
+            </p>
+          </div>
+          <div>
+            <label className="label">Invoice business name</label>
+            <input
+              name="invoiceBusinessName"
+              defaultValue={settings.invoiceBusinessName}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Phone</label>
+            <input
+              name="invoicePhone"
+              type="tel"
+              defaultValue={settings.invoicePhone}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Email</label>
+            <input
+              name="invoiceEmail"
+              type="email"
+              defaultValue={settings.invoiceEmail}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Address / postcode</label>
+            <input
+              name="invoiceAddress"
+              defaultValue={settings.invoiceAddress}
+              className="input"
+            />
+          </div>
           <div className="sm:col-span-2">
-            <button className="btn-primary">Save</button>
+            <label className="label">Website</label>
+            <input
+              name="invoiceWebsite"
+              type="url"
+              defaultValue={settings.invoiceWebsite}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Bank account name</label>
+            <input
+              name="invoiceBankName"
+              defaultValue={settings.invoiceBankName}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Account number</label>
+            <input
+              name="invoiceAccountNumber"
+              inputMode="numeric"
+              defaultValue={settings.invoiceAccountNumber}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Sort code</label>
+            <input
+              name="invoiceSortCode"
+              inputMode="numeric"
+              defaultValue={settings.invoiceSortCode}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Names below signatures</label>
+            <input
+              name="invoiceSigners"
+              defaultValue={settings.invoiceSigners}
+              className="input"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <button className="btn-primary">Save settings</button>
           </div>
         </form>
       </div>

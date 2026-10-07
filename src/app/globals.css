@@ -229,11 +229,19 @@ body {
 textarea.invoice-edit-field {
   min-height: 1.5em;
   overflow: hidden;
-  resize: vertical;
+  resize: none;
 }
 
 .invoice-edit-field::placeholder {
   color: #aaa;
+}
+
+.invoice-money-editor {
+  display: block;
+}
+
+.invoice-print-value {
+  display: none;
 }
 
 .invoice-header,
@@ -377,6 +385,10 @@ textarea.invoice-edit-field {
   text-align: right;
 }
 
+.invoice-lines td:not(:first-child) .invoice-print-value {
+  text-align: right;
+}
+
 .invoice-number-field {
   font-variant-numeric: tabular-nums;
 }
@@ -409,6 +421,11 @@ textarea.invoice-edit-field {
   width: 90px;
   font-weight: 800;
   text-align: right;
+}
+
+.invoice-summary .invoice-money-editor {
+  margin-left: auto;
+  width: 90px;
 }
 
 .invoice-footer {
@@ -487,6 +504,15 @@ textarea.invoice-edit-field {
     min-height: 118px;
   }
 
+  .invoice-edit-field {
+    min-height: 32px;
+    touch-action: manipulation;
+  }
+
+  .invoice-edit-field:focus {
+    font-size: 16px;
+  }
+
   .invoice-title-row {
     font-size: 18px;
   }
@@ -523,6 +549,11 @@ textarea.invoice-edit-field {
   .invoice-lines td {
     padding: 5px 4px;
     font-size: 8px;
+  }
+
+  .invoice-lines .invoice-edit-field {
+    padding-right: 1px;
+    padding-left: 1px;
   }
 
   .invoice-lines td:first-child span {
@@ -597,5 +628,13 @@ textarea.invoice-edit-field {
 
   textarea.invoice-edit-field {
     resize: none;
+  }
+
+  .invoice-money-input {
+    display: none;
+  }
+
+  .invoice-print-value {
+    display: block;
   }
 }

@@ -2,7 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+} from "react";
 import { saveInvoiceDefaults } from "@/app/actions/invoice";
 import { editableInvoiceTotals } from "@/lib/invoice";
 import { formatMoney } from "@/lib/money";
@@ -35,6 +41,69 @@ export type InvoiceEditorData = {
 function numericValue(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function AutoTextarea({
+  ariaLabel,
+  value,
+  onChange,
+  placeholder,
+}: {
+  ariaLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      aria-label={ariaLabel}
+      value={value}
+      onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+        onChange(event.target.value)
+      }
+      placeholder={placeholder}
+      rows={1}
+      className="invoice-edit-field"
+    />
+  );
+}
+
+function MoneyEditor({
+  ariaLabel,
+  value,
+  onChange,
+  currency,
+}: {
+  ariaLabel: string;
+  value: number;
+  onChange: (value: number) => void;
+  currency: string;
+}) {
+  return (
+    <span className="invoice-money-editor">
+      <input
+        aria-label={ariaLabel}
+        type="number"
+        step="0.01"
+        value={value}
+        onChange={(event) => onChange(numericValue(event.target.value))}
+        className="invoice-edit-field invoice-number-field invoice-money-input"
+      />
+      <span className="invoice-print-value">
+        {formatMoney(value, currency)}
+      </span>
+    </span>
+  );
 }
 
 export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
@@ -200,21 +269,17 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                 placeholder="Customer name"
                 className="invoice-edit-field invoice-customer-name"
               />
-              <textarea
-                aria-label="Customer address"
+              <AutoTextarea
+                ariaLabel="Customer address"
                 value={customerAddress}
-                onChange={(event) => setCustomerAddress(event.target.value)}
+                onChange={setCustomerAddress}
                 placeholder="Customer address"
-                rows={2}
-                className="invoice-edit-field"
               />
-              <textarea
-                aria-label="Customer contact details"
+              <AutoTextarea
+                ariaLabel="Customer contact details"
                 value={customerContact}
-                onChange={(event) => setCustomerContact(event.target.value)}
+                onChange={setCustomerContact}
                 placeholder="Customer phone / email"
-                rows={2}
-                className="invoice-edit-field"
               />
             </div>
           </div>
@@ -274,13 +339,11 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                   placeholder="Job description"
                   className="invoice-edit-field invoice-line-title"
                 />
-                <textarea
-                  aria-label="Job details"
+                <AutoTextarea
+                  ariaLabel="Job details"
                   value={detail}
-                  onChange={(event) => setDetail(event.target.value)}
+                  onChange={setDetail}
                   placeholder="Job details"
-                  rows={2}
-                  className="invoice-edit-field"
                 />
               </td>
               <td>
@@ -295,23 +358,19 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                 />
               </td>
               <td>
-                <input
-                  aria-label="Unit price"
-                  type="number"
-                  step="0.01"
+                <MoneyEditor
+                  ariaLabel="Unit price"
                   value={unitPrice}
-                  onChange={(event) => updateUnitPrice(event.target.value)}
-                  className="invoice-edit-field invoice-number-field"
+                  onChange={(value) => updateUnitPrice(String(value))}
+                  currency={initial.currency}
                 />
               </td>
               <td>
-                <input
-                  aria-label="Line amount"
-                  type="number"
-                  step="0.01"
+                <MoneyEditor
+                  ariaLabel="Line amount"
                   value={amount}
-                  onChange={(event) => setAmount(numericValue(event.target.value))}
-                  className="invoice-edit-field invoice-number-field"
+                  onChange={setAmount}
+                  currency={initial.currency}
                 />
               </td>
             </tr>
@@ -331,13 +390,11 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
             <div>
               <dt>PAID:</dt>
               <dd>
-                <input
-                  aria-label="Amount paid"
-                  type="number"
-                  step="0.01"
+                <MoneyEditor
+                  ariaLabel="Amount paid"
                   value={paid}
-                  onChange={(event) => setPaid(numericValue(event.target.value))}
-                  className="invoice-edit-field invoice-number-field"
+                  onChange={setPaid}
+                  currency={initial.currency}
                 />
               </dd>
             </div>

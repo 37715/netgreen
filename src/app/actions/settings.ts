@@ -1,11 +1,19 @@
 "use server";
 
+import { auth, isAuthEnabled } from "@/auth";
 import { prisma } from "@/lib/db";
 import { invoiceSettingsFromFormData } from "@/lib/invoice";
 import { parseAmount } from "@/lib/money";
 import { revalidatePath } from "next/cache";
 
+async function requireSignedInUser() {
+  if (!isAuthEnabled()) return;
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+}
+
 export async function updateSettings(formData: FormData) {
+  await requireSignedInUser();
   const businessName =
     String(formData.get("businessName") || "").trim() || "netgreen";
   const employeeRate = parseAmount(formData.get("employeeRate"));
@@ -37,6 +45,7 @@ export async function updateSettings(formData: FormData) {
 }
 
 export async function createCrew(formData: FormData) {
+  await requireSignedInUser();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
   const last = await prisma.crew.findFirst({
@@ -56,6 +65,7 @@ export async function createCrew(formData: FormData) {
 }
 
 export async function updateCrew(formData: FormData) {
+  await requireSignedInUser();
   const id = Number(formData.get("id"));
   await prisma.crew.update({
     where: { id },
@@ -70,6 +80,7 @@ export async function updateCrew(formData: FormData) {
 }
 
 export async function setCrewActive(formData: FormData) {
+  await requireSignedInUser();
   const id = Number(formData.get("id"));
   const active = String(formData.get("active")) === "true";
   await prisma.crew.update({ where: { id }, data: { active } });

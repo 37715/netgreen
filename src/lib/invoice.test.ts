@@ -61,6 +61,12 @@ describe("editableInvoiceTotals", () => {
       paid: 10.01,
       balance: 49.98,
     });
+    assert.deepEqual(editableInvoiceTotals(2.5, 19.99, 0), {
+      subtotal: 49.98,
+      total: 49.98,
+      paid: 0,
+      balance: 49.98,
+    });
   });
 });
 

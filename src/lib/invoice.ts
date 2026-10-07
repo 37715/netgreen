@@ -3,7 +3,8 @@ export function invoiceNumber(jobId: number): string {
 }
 
 function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  const roundingTolerance = Math.sign(value || 1) * 1e-10;
+  return Math.round((value + roundingTolerance) * 100) / 100;
 }
 
 export function editableInvoiceTotals(

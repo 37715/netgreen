@@ -3,7 +3,28 @@ export function invoiceNumber(jobId: number): string {
 }
 
 function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function editableInvoiceTotals(
+  quantity: number,
+  unitPrice: number,
+  paid: number
+): {
+  subtotal: number;
+  total: number;
+  paid: number;
+  balance: number;
+} {
+  const subtotal = roundMoney(quantity * unitPrice);
+  const roundedPaid = roundMoney(paid);
+
+  return {
+    subtotal,
+    total: subtotal,
+    paid: roundedPaid,
+    balance: roundMoney(subtotal - roundedPaid),
+  };
 }
 
 export function invoiceTotals(
@@ -16,14 +37,7 @@ export function invoiceTotals(
   balance: number;
 } {
   const total = roundMoney(price);
-  const paid = paidAt ? total : 0;
-
-  return {
-    subtotal: total,
-    total,
-    paid,
-    balance: roundMoney(total - paid),
-  };
+  return editableInvoiceTotals(1, total, paidAt ? total : 0);
 }
 
 export function invoiceLineDetail({

@@ -201,6 +201,41 @@ body {
   font-size: 12px;
 }
 
+.invoice-edit-field {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  padding: 1px 3px;
+}
+
+.invoice-edit-field:hover {
+  border-color: #b7caae;
+  background: #f7faf5;
+}
+
+.invoice-edit-field:focus {
+  border-color: #4f812f;
+  background: #f7faf5;
+  outline: 2px solid rgb(79 129 47 / 20%);
+}
+
+textarea.invoice-edit-field {
+  min-height: 1.5em;
+  overflow: hidden;
+  resize: vertical;
+}
+
+.invoice-edit-field::placeholder {
+  color: #aaa;
+}
+
 .invoice-header,
 .invoice-title-row,
 .invoice-parties,
@@ -229,6 +264,10 @@ body {
   text-align: right;
 }
 
+.invoice-contact .invoice-edit-field {
+  text-align: right;
+}
+
 .invoice-title-row {
   align-items: end;
   border-bottom: 1px solid #aeb4af;
@@ -238,7 +277,8 @@ body {
   letter-spacing: -0.02em;
 }
 
-.invoice-title-row h1 {
+.invoice-title-row > .invoice-edit-field {
+  width: min(65%, 125mm);
   font: inherit;
 }
 
@@ -257,7 +297,7 @@ body {
   line-height: 1.25;
 }
 
-.invoice-bill-to h2 {
+.invoice-customer-name {
   color: #292929;
   font-size: 20px;
   font-weight: 800;
@@ -287,6 +327,10 @@ body {
 
 .invoice-meta dd {
   min-width: 90px;
+  text-align: right;
+}
+
+.invoice-meta .invoice-edit-field {
   text-align: right;
 }
 
@@ -325,6 +369,18 @@ body {
   display: block;
 }
 
+.invoice-lines .invoice-line-title {
+  font-weight: 700;
+}
+
+.invoice-lines td:not(:first-child) .invoice-edit-field {
+  text-align: right;
+}
+
+.invoice-number-field {
+  font-variant-numeric: tabular-nums;
+}
+
 .invoice-lines td:first-child span {
   margin-top: 3px;
   color: #929292;
@@ -348,6 +404,13 @@ body {
   text-align: right;
 }
 
+.invoice-summary .invoice-number-field {
+  margin-left: auto;
+  width: 90px;
+  font-weight: 800;
+  text-align: right;
+}
+
 .invoice-footer {
   align-items: flex-start;
   gap: 32px;
@@ -363,7 +426,7 @@ body {
   font-weight: 800;
 }
 
-.invoice-payment p:nth-of-type(2) {
+.invoice-payment .invoice-edit-field:nth-of-type(2) {
   margin-top: 4mm;
 }
 
@@ -407,9 +470,10 @@ body {
   border-bottom: 1px solid #252525;
 }
 
-.invoice-signatures > div {
+.invoice-signatures > .invoice-edit-field {
   margin-top: 1mm;
   font-weight: 700;
+  text-align: center;
 }
 
 @media (max-width: 520px) {
@@ -438,7 +502,7 @@ body {
     width: 56%;
   }
 
-  .invoice-bill-to h2 {
+  .invoice-customer-name {
     font-size: 14px;
   }
 
@@ -517,5 +581,21 @@ body {
     box-shadow: none;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  .invoice-edit-field,
+  .invoice-edit-field:hover,
+  .invoice-edit-field:focus {
+    border-color: transparent;
+    background: transparent;
+    outline: none;
+  }
+
+  .invoice-edit-field::placeholder {
+    color: transparent;
+  }
+
+  textarea.invoice-edit-field {
+    resize: none;
   }
 }

@@ -76,7 +76,8 @@ export default async function SettingsPage() {
               Invoice details
             </h3>
             <p className="mt-0.5 text-xs text-stone-500">
-              These details appear on every generated job invoice.
+              These details appear on every generated job invoice. Bank details
+              are saved in the private app database, not in Git.
             </p>
           </div>
           <div>

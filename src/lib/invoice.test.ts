@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  editableInvoiceTotals,
   invoiceLineDetail,
   invoiceNumber,
   invoiceSettingsFromFormData,
@@ -39,6 +40,26 @@ describe("invoiceTotals", () => {
       total: -25,
       paid: 0,
       balance: -25,
+    });
+  });
+});
+
+describe("editableInvoiceTotals", () => {
+  it("recalculates the line amount and balance from editable values", () => {
+    assert.deepEqual(editableInvoiceTotals(2.5, 40, 25), {
+      subtotal: 100,
+      total: 100,
+      paid: 25,
+      balance: 75,
+    });
+  });
+
+  it("rounds money calculations to pennies", () => {
+    assert.deepEqual(editableInvoiceTotals(3, 19.995, 10.005), {
+      subtotal: 59.99,
+      total: 59.99,
+      paid: 10.01,
+      balance: 49.98,
     });
   });
 });

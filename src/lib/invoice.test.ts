@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   editableInvoiceTotals,
   hourlyInvoiceAmount,
+  hourlyInvoiceTotal,
   invoiceLineDetail,
   invoiceNumber,
   invoiceSettingsFromFormData,
@@ -78,6 +79,12 @@ describe("hourlyInvoiceAmount", () => {
 
   it("rounds the hourly amount to pennies", () => {
     assert.equal(hourlyInvoiceAmount(3, 1.25, 19.99), 74.96);
+  });
+});
+
+describe("hourlyInvoiceTotal", () => {
+  it("preserves fixed waste or material add-ons", () => {
+    assert.equal(hourlyInvoiceTotal(2, 5, 10, 15), 115);
   });
 });
 

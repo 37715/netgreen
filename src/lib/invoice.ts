@@ -15,6 +15,15 @@ export function hourlyInvoiceAmount(
   return roundMoney(workers * hours * hourlyRate);
 }
 
+export function hourlyInvoiceTotal(
+  workers: number,
+  hours: number,
+  hourlyRate: number,
+  extras: number
+): number {
+  return roundMoney(hourlyInvoiceAmount(workers, hours, hourlyRate) + extras);
+}
+
 export function editableInvoiceTotals(
   quantity: number,
   unitPrice: number,

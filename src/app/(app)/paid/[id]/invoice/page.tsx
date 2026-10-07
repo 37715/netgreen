@@ -3,6 +3,7 @@ import { InvoiceEditor } from "@/components/InvoiceEditor";
 import { prisma } from "@/lib/db";
 import { toDateInput } from "@/lib/dates";
 import {
+  hourlyInvoiceAmount,
   invoiceLineDetail,
   invoiceNumber,
   invoiceTotals,
@@ -47,6 +48,9 @@ export default async function PaidJobInvoicePage({
     job.hourlyRate && job.hourlyRate > 0
       ? job.hourlyRate
       : totals.total / (workers * hours);
+  const hourlyExtras = Number(
+    (totals.total - hourlyInvoiceAmount(workers, hours, hourlyRate)).toFixed(2)
+  );
 
   return (
     <InvoiceEditor
@@ -72,6 +76,7 @@ export default async function PaidJobInvoicePage({
         workers,
         hours,
         hourlyRate,
+        hourlyExtras,
         paid: totals.paid,
         bankName: settings.invoiceBankName,
         accountNumber: settings.invoiceAccountNumber,

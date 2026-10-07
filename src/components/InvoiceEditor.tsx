@@ -10,7 +10,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { saveInvoiceDefaults } from "@/app/actions/invoice";
-import { editableInvoiceTotals, hourlyInvoiceAmount } from "@/lib/invoice";
+import { editableInvoiceTotals, hourlyInvoiceTotal } from "@/lib/invoice";
 import { formatMoney } from "@/lib/money";
 
 export type InvoiceEditorData = {
@@ -35,6 +35,7 @@ export type InvoiceEditorData = {
   workers: number;
   hours: number;
   hourlyRate: number;
+  hourlyExtras: number;
   paid: number;
   bankName: string;
   accountNumber: string;
@@ -133,6 +134,7 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
   const [workers, setWorkers] = useState(initial.workers);
   const [hours, setHours] = useState(initial.hours);
   const [hourlyRate, setHourlyRate] = useState(initial.hourlyRate);
+  const [hourlyExtras, setHourlyExtras] = useState(initial.hourlyExtras);
   const [paid, setPaid] = useState(initial.paid);
   const [bankName, setBankName] = useState(initial.bankName);
   const [accountNumber, setAccountNumber] = useState(initial.accountNumber);
@@ -143,7 +145,7 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
 
   const amount =
     pricingType === "HOURLY"
-      ? hourlyInvoiceAmount(workers, hours, hourlyRate)
+      ? hourlyInvoiceTotal(workers, hours, hourlyRate, hourlyExtras)
       : fixedAmount;
   const totals = editableInvoiceTotals(1, amount, paid);
 
@@ -376,6 +378,7 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                   <th>People</th>
                   <th>Hours</th>
                   <th>Hourly rate</th>
+                  <th>Extras</th>
                 </>
               ) : (
                 <>
@@ -436,6 +439,14 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
                       ariaLabel="Hourly rate"
                       value={hourlyRate}
                       onChange={setHourlyRate}
+                      currency={initial.currency}
+                    />
+                  </td>
+                  <td>
+                    <MoneyEditor
+                      ariaLabel="Additional fixed charges"
+                      value={hourlyExtras}
+                      onChange={setHourlyExtras}
                       currency={initial.currency}
                     />
                   </td>

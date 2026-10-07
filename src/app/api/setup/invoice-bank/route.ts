@@ -33,24 +33,53 @@ export async function POST(request: Request) {
   const accountNumber = String(body.accountNumber || "").trim();
   const sortCode = String(body.sortCode || "").trim();
 
-  if (!bankName || !/^\d{8}$/.test(accountNumber) || !/^\d{2}-\d{2}-\d{2}$/.test(sortCode)) {
+  if (
+    !bankName ||
+    !/^\d{8}$/.test(accountNumber) ||
+    !/^\d{2}-\d{2}-\d{2}$/.test(sortCode)
+  ) {
     return Response.json({ error: "Invalid bank details" }, { status: 400 });
   }
 
-  await prisma.settings.upsert({
+  const existing = await prisma.settings.findUnique({
     where: { id: 1 },
-    update: {
-      invoiceBankName: bankName,
-      invoiceAccountNumber: accountNumber,
-      invoiceSortCode: sortCode,
+    select: {
+      invoiceAccountNumber: true,
+      invoiceSortCode: true,
     },
-    create: {
+  });
+
+  if (!existing) {
+    await prisma.settings.create({
+      data: {
+        id: 1,
+        invoiceBankName: bankName,
+        invoiceAccountNumber: accountNumber,
+        invoiceSortCode: sortCode,
+      },
+    });
+    return Response.json({ ok: true });
+  }
+
+  const result = await prisma.settings.updateMany({
+    where: {
       id: 1,
+      invoiceAccountNumber: "",
+      invoiceSortCode: "",
+    },
+    data: {
       invoiceBankName: bankName,
       invoiceAccountNumber: accountNumber,
       invoiceSortCode: sortCode,
     },
   });
+
+  if (result.count !== 1) {
+    return Response.json(
+      { error: "Bank details are already configured" },
+      { status: 409 }
+    );
+  }
 
   return Response.json({ ok: true });
 }

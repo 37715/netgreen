@@ -362,7 +362,7 @@ textarea.invoice-edit-field {
 }
 
 .invoice-lines-hourly th:first-child {
-  width: 46%;
+  width: 38%;
 }
 
 .invoice-lines th:not(:first-child),

@@ -485,20 +485,7 @@ textarea.invoice-edit-field {
   text-align: center;
 }
 
-.invoice-signature-lines {
-  display: grid;
-  gap: 8mm;
-  padding: 5mm 4mm 0;
-}
-
-.invoice-signature-lines span {
-  display: block;
-  height: 7mm;
-  border-bottom: 1px solid #252525;
-}
-
 .invoice-signatures > .invoice-edit-field {
-  margin-top: 1mm;
   font-weight: 700;
   text-align: center;
 }

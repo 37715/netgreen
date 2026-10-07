@@ -549,10 +549,6 @@ export function InvoiceEditor({ initial }: { initial: InvoiceEditorData }) {
               <strong>{formatMoney(totals.balance, initial.currency)}</strong>
             </div>
             <div className="invoice-signatures">
-              <div className="invoice-signature-lines" aria-hidden="true">
-                <span />
-                <span />
-              </div>
               <input
                 aria-label="Signer names"
                 value={signers}

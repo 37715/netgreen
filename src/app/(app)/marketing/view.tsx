@@ -10,14 +10,14 @@ const RANGES: RangeDays[] = [7, 30, 90];
 const LINE_COLOURS = ["#114f30", "#639312", "#515a4b"];
 
 function formatCount(metric: Metric): string {
-  if (metric.kind === "awaiting") return "Awaiting data";
+  if (metric.kind === "awaiting") return "Awaiting first import";
   if (metric.kind === "error") return "Unavailable";
   if (metric.kind === "empty-range" || metric.value == null) return "No rows in range";
   return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(metric.value);
 }
 
 function formatGbp(metric: Metric): string {
-  if (metric.kind === "awaiting") return "Awaiting data";
+  if (metric.kind === "awaiting") return "Awaiting first import";
   if (metric.kind === "error") return "Unavailable";
   if (metric.kind === "empty-range" || metric.value == null) return "No rows in range";
   return formatMoney(metric.value);
@@ -40,7 +40,7 @@ function hrefFor(days: RangeDays, channel: Channel): string {
 function statusLabel(status: FeedHealth["status"]): string {
   if (status === "reporting") return "Reporting";
   if (status === "stale") return "Stale";
-  if (status === "awaiting") return "Awaiting data";
+  if (status === "awaiting") return "Awaiting first import";
   return "Error";
 }
 
@@ -183,7 +183,7 @@ export function MarketingView({
         <div className="card p-4 lg:col-span-3">
           <h2 className="font-display text-base font-bold text-brand-900">Daily ad performance</h2>
           {adsSeries == null ? (
-            <p className="mt-6 text-sm text-stone-500">Awaiting data</p>
+            <p className="mt-6 text-sm text-stone-500">Awaiting first import</p>
           ) : adsSeries.length === 0 ? (
             <p className="mt-6 text-sm text-stone-500">No rows in range</p>
           ) : (
@@ -193,7 +193,7 @@ export function MarketingView({
         <div className="card p-4 lg:col-span-2">
           <h2 className="font-display text-base font-bold text-brand-900">Profile visibility</h2>
           {profileSeries == null ? (
-            <p className="mt-6 text-sm text-stone-500">Awaiting data</p>
+            <p className="mt-6 text-sm text-stone-500">Awaiting first import</p>
           ) : profileSeries.length === 0 ? (
             <p className="mt-6 text-sm text-stone-500">No rows in range</p>
           ) : (
@@ -229,7 +229,7 @@ export function MarketingView({
             {campaigns.length === 0 ? (
               <tr>
                 <td className="px-4 py-4 text-stone-500" colSpan={8}>
-                  {spend.kind === "error" ? "Unavailable" : "Awaiting data"}
+                  {spend.kind === "error" ? "Unavailable" : "Awaiting first import"}
                 </td>
               </tr>
             ) : (
@@ -353,7 +353,7 @@ export function MarketingView({
 }
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  const waiting = value === "Awaiting data" || value === "Unavailable" || value === "No rows in range";
+  const waiting = value === "Awaiting first import" || value === "Unavailable" || value === "No rows in range";
   return (
     <div className="stat-card">
       <div className="eyebrow">{label}</div>
@@ -380,20 +380,30 @@ function SpendChart({ points }: { points: AdsPoint[] }) {
   const width = 640;
   const height = 180;
   const pad = 24;
-  const max = Math.max(...points.map((point) => point.spend), 1);
+  const maxSpend = Math.max(...points.map((point) => point.spend), 1);
+  const maxConversions = Math.max(...points.map((point) => point.conversions), 1);
   const x = (index: number) =>
     dates.length === 1 ? width / 2 : pad + (index / (dates.length - 1)) * (width - pad * 2);
-  const y = (value: number) => height - pad - (value / max) * (height - pad * 2);
+  const y = (value: number, max: number) => height - pad - (value / max) * (height - pad * 2);
 
   return (
     <div className="mt-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full" role="img" aria-label="Daily ad spend">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full" role="img" aria-label="Daily ad spend and conversions">
         {campaigns.map((campaign, index) => {
-          const series = dates.map((date) => points.find((point) => point.date === date && point.campaign === campaign)?.spend ?? 0);
-          const path = series.map((value, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${x(pointIndex)} ${y(value)}`).join(" ");
-          return <path key={campaign} d={path} fill="none" stroke={LINE_COLOURS[index % LINE_COLOURS.length]} strokeWidth="2" />;
+          const colour = LINE_COLOURS[index % LINE_COLOURS.length];
+          const spend = dates.map((date) => points.find((point) => point.date === date && point.campaign === campaign)?.spend ?? 0);
+          const conversions = dates.map((date) => points.find((point) => point.date === date && point.campaign === campaign)?.conversions ?? 0);
+          const spendPath = spend.map((value, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${x(pointIndex)} ${y(value, maxSpend)}`).join(" ");
+          const conversionPath = conversions.map((value, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${x(pointIndex)} ${y(value, maxConversions)}`).join(" ");
+          return (
+            <g key={campaign}>
+              <path d={spendPath} fill="none" stroke={colour} strokeWidth="2" />
+              <path d={conversionPath} fill="none" stroke={colour} strokeWidth="1.5" strokeDasharray="4 3" />
+            </g>
+          );
         })}
       </svg>
+      <p className="mt-2 text-xs text-stone-500">Solid line is spend. Dashed line is ad conversions, on its own scale.</p>
       <ul className="mt-2 flex flex-wrap gap-3 text-xs text-stone-600">
         {campaigns.map((campaign, index) => (
           <li key={campaign} className="flex items-center gap-1.5">

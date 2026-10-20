@@ -51,6 +51,15 @@ export function LeadsIcon({ className = base }: IconProps) {
   );
 }
 
+export function ChartIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19h16" />
+      <path d="M7 16v-4M12 16V8M17 16v-7" />
+    </svg>
+  );
+}
+
 export function PhoneIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

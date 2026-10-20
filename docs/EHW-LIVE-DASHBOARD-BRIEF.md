@@ -105,7 +105,7 @@ second-by-second; Windsor data is refreshed daily.
    - `EHW_MARKETING_SHEET_ID=1khz35W5KOv4bKWL9p3WdbGTCWR6FjAwYUhRFQbAE_E4`
    - `GOOGLE_SHEETS_CLIENT_EMAIL` (service-account email)
    - `GOOGLE_SHEETS_PRIVATE_KEY` (private key, stored securely; handle
-      escaped newlines via .replace(/\\n/g, "\\n"))
+      escaped newlines via .replace(/\\n/g, "\n"))
    These are SERVER-ONLY (no `NEXT_PUBLIC_` prefixes).
    No API key should be committed in Git or shared in chat.
 3. Use Google Sheets API `spreadsheets.values.batchGet` to read

@@ -60,7 +60,14 @@ async function main() {
   url.searchParams.set("dateTimeRenderOption", "FORMATTED_STRING");
   const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   console.log("sheets_status", response.status);
-  if (!response.ok) process.exit(1);
+  if (!response.ok) {
+    const failure = (await response.json().catch(() => null)) as {
+      error?: { status?: string; message?: string };
+    } | null;
+    console.log("sheets_error", failure?.error?.status ?? "unknown");
+    console.log("sheets_message", failure?.error?.message ?? "none");
+    process.exit(1);
+  }
 
   const body = (await response.json()) as { valueRanges?: Array<{ values?: Cell[][] }> };
   const grids = {

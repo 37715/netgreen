@@ -9,37 +9,15 @@ is reviewed, merged, migrations run and external sources configured.**
 - MarketingDaily: aggregate daily records from advertising and analytics.
 - Google Sheets: optional read-only reporting/export. Do not maintain second mutable lead pipeline.
 
-## Formspree webhooks
+## Customer enquiries (no Formspree subscription)
 
-Your static EHW website already submits all enquiry forms by `fetch()` to
-`https://formspree.io/f/xnjljokj`, and triggers `generate_lead` after Formspree
-returns success. Do NOT initialise a second Formspree JavaScript SDK or add
-another form submit listener.
+Use the verified direct EHW website -> Netgreen endpoint
+`/api/integrations/ehw-leads`, which requires Cloudflare Turnstile and
+origin validation. The existing Formspree website AJAX handler stays live
+until the new endpoint is deployed, configured and tested.
 
-Formspree's **Simple Webhook** plugin is available on Professional and
-Business plans. Once this branch has passed staging checks and is deployed:
-
-1. Enable Webhook under the form's **Workflow** / plugins.
-2. Use the NETGREEN production URL followed by
-   `/api/integrations/formspree` (no secret in URL).
-3. Obtain Formspree's webhook signing secret and set
-   `FORMSPREE_SIGNING_SECRET` as a Vercel *server-side environment variable*.
-4. Confirm the webhook JSON is delivered in `{form, keys, submission}` form
-   with EHW's expected name, email, phone, location, service/site_type and
-   message fields.
-5. The receiver checks `Formspree-Signature`, calculates HMAC-SHA256 over
-   `timestamp + "." + raw_body` and rejects unauthenticated requests.
-6. Test one lead and verify exactly one Netgreen entry; replay the same
-   signed payload to check idempotency. Avoid testing with real customers.
-
-If this plan doesn't support webhooks, keep the working Formspree submission
-in place and use a secure server-side integration or upgrade plan. Never put
-private webhook/API credentials in the public static HTML.
-
-Formspree retries unsuccessful deliveries, so check webhook response times
-and configure alerting on delivery failures. Do not merge/deploy this
-integration until the form mapping, consent/privacy notices, authentication,
-schema migration and tests have been reviewed.
+See [EHW-DIRECT-FORMS.md](EHW-DIRECT-FORMS.md) for the exact rollout,
+environment variables, data mapping and verification steps.
 
 ## Windsor.ai / data import
 
@@ -67,10 +45,9 @@ code and normalize spend into GBP only after verifying account currency.
 ## Required production review
 
 - Confirm Netgreen auth is enforced; AUTH_DISABLED must not be true in production.
-- Move route protection to the correct middleware/proxy approach for Next.js 16
-  before exposing the ingest endpoint on the internet.
-- Only the two secret-protected integration routes should bypass interactive OAuth.
-- Review Formspree payload, customer consent, retention policy and UK GDPR.
+- Review src/proxy.ts routing in Next.js 16 and confirm private routes stay protected.
+- Only the metrics API (bearer secret) and EHW public-lead API (Turnstile) should bypass OAuth.
+- Review web form payload, customer consent, retention policy and UK GDPR.
 - Apply Prisma schema changes to a staging DB; back up production before migration.
 - Test success, malformed payload, token rejection and webhook retries.
 - Run tests, lint and production build.

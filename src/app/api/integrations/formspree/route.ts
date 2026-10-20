@@ -1,17 +1,17 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// Set FORMSPREE_WEBHOOK_SECRET in Vercel, then configure Formspree's
-// server-side webhook URL as /api/integrations/formspree?token=SECRET.
-// A URL token must never be used on the public website or logged.
+// Use Formspree's Simple Webhook and verify its signed request. Keep the
+// webhook signing secret only in the server environment, never in a URL.
 export async function POST(request: NextRequest) {
-  const secret = process.env.FORMSPREE_WEBHOOK_SECRET;
-  const supplied = request.nextUrl.searchParams.get("token") ?? "";
-  if (!secret || !supplied || !safeEqual(secret, supplied)) {
+  const secret = process.env.FORMSPREE_SIGNING_SECRET;
+  const signature = request.headers.get("formspree-signature") ?? "";
+  if (!secret) return NextResponse.json({ error: "Not configured" }, { status: 503 });
+  const raw = await request.text();
+  if (!verifySignature(secret, signature, raw)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const raw = await request.text();
   if (raw.length > 200_000) return NextResponse.json({ error: "Too large" }, { status: 413 });
   let payload: Record<string, unknown>;
   try { payload = JSON.parse(raw); } catch {
@@ -46,7 +46,15 @@ export async function POST(request: NextRequest) {
   });
   return NextResponse.json({ accepted: true, leadId: lead.id });
 }
-function safeEqual(a: string, b: string) {
-  const aa = Buffer.from(a); const bb = Buffer.from(b);
-  return aa.length === bb.length && timingSafeEqual(aa, bb);
+function verifySignature(secret: string, header: string, raw: string): boolean {
+  const parts = Object.fromEntries(header.split(",").map(v => v.trim().split("=", 2)));
+  const timestamp = Number(parts.t);
+  const received = parts.v1 ?? "";
+  if (!Number.isSafeInteger(timestamp) || !/^[0-9a-f]{64}$/i.test(received)) return false;
+  // A day accommodates delayed webhook retries; duplicate payloads are upserted.
+  if (Math.abs(Math.floor(Date.now()/1000) - timestamp) > 86400) return false;
+  const expected = createHmac("sha256", secret).update(`${timestamp}.${raw}`, "utf8").digest("hex");
+  const a = Buffer.from(expected, "hex");
+  const b = Buffer.from(received, "hex");
+  return a.length === b.length && timingSafeEqual(a, b);
 }

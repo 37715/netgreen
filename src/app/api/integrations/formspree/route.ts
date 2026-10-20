@@ -19,8 +19,10 @@ export async function POST(request: NextRequest) {
   }
   // Different Formspree webhook delivery formats use either root fields
   // or a nested data object. Confirm actual format in staging first.
-  const fields = (payload.data && typeof payload.data === "object" && !Array.isArray(payload.data))
-    ? payload.data as Record<string, unknown> : payload;
+  const fields = (payload.submission && typeof payload.submission === "object" && !Array.isArray(payload.submission))
+    ? payload.submission as Record<string, unknown>
+    : (payload.data && typeof payload.data === "object" && !Array.isArray(payload.data))
+      ? payload.data as Record<string, unknown> : payload;
   const pick = (...keys: string[]) => keys.map(k => fields[k]).find(v => typeof v === "string") as string | undefined;
   const customerName = (pick("name", "customerName", "full_name") ?? "").trim().slice(0, 200);
   const email = (pick("email", "_replyto") ?? "").trim().slice(0, 254);

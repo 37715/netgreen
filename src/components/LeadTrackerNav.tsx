@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HomeIcon, LeadsIcon, PlusIcon } from "@/components/icons";
+import { LeadsIcon, PlusIcon, ToolsIcon } from "@/components/icons";
 
 export function LeadTrackerNav() {
   const pathname = usePathname();
@@ -28,9 +28,9 @@ export function LeadTrackerNav() {
           </Link>
           <Link
             href="/calendar"
-            className="hidden rounded-xl border border-brand-600 px-3 py-2 text-xs font-bold text-brand-100 hover:bg-brand-800 sm:inline-flex"
+            className="rounded-xl border border-brand-600 px-3 py-2 text-xs font-bold text-brand-100 hover:bg-brand-800"
           >
-            Back to jobs
+            Jobs
           </Link>
         </div>
       </header>
@@ -51,10 +51,10 @@ export function LeadTrackerNav() {
             primary
           />
           <LeadNavItem
-            href="/calendar"
-            label="Main app"
+            href="/tools"
+            label="Tools"
             active={false}
-            icon={<HomeIcon className="h-6 w-6" />}
+            icon={<ToolsIcon className="h-6 w-6" />}
           />
         </div>
       </nav>

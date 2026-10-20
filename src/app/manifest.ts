@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "netgreen",
     short_name: "netgreen",
     description: "Jobs, scheduling, costs, margins and profit for netgreen",
-    start_url: "/",
+    start_url: "/calendar",
     display: "standalone",
     background_color: "#eceee8",
     theme_color: "#0e3f27",

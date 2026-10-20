@@ -4,7 +4,9 @@ import {
   HomeIcon,
   LeadsIcon,
   ProjectIcon,
+  NoteIcon,
   ReceiptIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { PageHeader } from "@/components/ui";
 
@@ -41,13 +43,25 @@ const tools = [
     detail: "Takings, what's still owed, and the books.",
     Icon: HomeIcon,
   },
+  {
+    href: "/customers",
+    label: "Rounds",
+    detail: "Customers, repeat visits and rates.",
+    Icon: UsersIcon,
+  },
+  {
+    href: "/invoices",
+    label: "Invoices",
+    detail: "Create a job invoice or a customer statement.",
+    Icon: NoteIcon,
+  },
 ];
 
 export default function ToolsPage() {
   return (
     <div>
-      <PageHeader title="Tools" subtitle="Everything that isn't today's job list." />
-      <ul className="grid gap-2">
+      <PageHeader title="Tools" />
+      <ul className="grid gap-2 sm:grid-cols-2">
         {tools.map(({ href, label, detail, Icon }) => (
           <li key={href}>
             <Link

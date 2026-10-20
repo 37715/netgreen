@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LeadTrackerNav } from "@/components/LeadTrackerNav";
+import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Lead tracker · netgreen",
@@ -9,12 +9,5 @@ export const metadata: Metadata = {
 export default function LeadsLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <div className="min-h-screen bg-stone-50">
-      <LeadTrackerNav />
-      <main className="mx-auto max-w-5xl px-4 py-5 pb-28 sm:px-6 sm:py-7">
-        {children}
-      </main>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }

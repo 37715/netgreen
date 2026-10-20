@@ -10,7 +10,7 @@ deployed, database migration applied, alerts configured and real end-to-end
 tests pass.** This direct integration is part of the unmerged review branch.
 
 ## Server
-Public API path: `https://YOUR-NETGREEN-HOST/api/integrations/ehw-leads`
+Public API path: `https://netgreen.vercel.app/api/integrations/ehw-leads`
 
 - Allowed Origins: `https://ehwlandscapes.com` and `https://www.ehwlandscapes.com`.
 - Requires JSON body, a UUID `requestId`, and Turnstile token.
@@ -43,6 +43,12 @@ JSON request example (all values illustrative, never put API secrets here):
 ```
 
 The `website` honeypot field should be hidden and blank.
+
+## Live destination confirmed
+
+- Live Netgreen address (user-confirmed): https://netgreen.vercel.app/
+- Direct enquiry endpoint (only after branch deployed): https://netgreen.vercel.app/api/integrations/ehw-leads
+- The endpoint has **not** been deployed or tested; do not send public traffic to it yet.
 
 ## Vercel production environment variables (server only)
 

@@ -20,6 +20,7 @@ const links = [
   { href: "/calendar", label: "Jobs", Icon: CalendarIcon, also: ["/paid"] },
   { href: "/", label: "Money", Icon: HomeIcon, exact: true },
   { href: "/leads", label: "Leads", Icon: LeadsIcon },
+  { href: "/marketing", label: "Marketing", Icon: LeadsIcon },
   { href: "/projects", label: "Projects", Icon: ProjectIcon },
   { href: "/overheads", label: "Costs", Icon: ReceiptIcon },
   { href: "/customers", label: "Rounds", Icon: UsersIcon },

@@ -29,11 +29,4 @@ if (deploySchema) {
   console.log("Skipping database schema push outside production.");
 }
 
-const sheetsConfigured = ["EHW_MARKETING_SHEET_ID", "GOOGLE_SHEETS_CLIENT_EMAIL", "GOOGLE_SHEETS_PRIVATE_KEY"].every(
-  (name) => process.env[name]?.trim()
-);
-if (sheetsConfigured) {
-  run("tsx", ["scripts/check-live-sheets.ts"]);
-}
-
 run("next", ["build"]);

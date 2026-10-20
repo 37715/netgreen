@@ -52,8 +52,8 @@ export default async function MarketingPage({ searchParams }: { searchParams: Pr
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow">Business intelligence / Marketing</p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-brand-900 sm:text-4xl">Acquisition overview<span className="text-lime-600">.</span></h1>
-          <p className="mt-2 text-sm text-stone-500">Understand where your enquiries come from, what they cost and which jobs they generate.</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-brand-900 sm:text-4xl">Marketing</h1>
+          <p className="mt-2 text-sm text-stone-500">Advertising, website enquiries and sales pipeline.</p>
         </div>
         <div className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-600">
           {lastSync ? "Data updated " + lastSync.toLocaleString("en-GB", { timeZone: "Europe/London", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "No advertising data imported yet"}
@@ -65,8 +65,8 @@ export default async function MarketingPage({ searchParams }: { searchParams: Pr
           <div className="absolute -right-14 -top-20 h-72 w-72 rounded-full border border-white/15 shadow-[0_0_0_35px_rgba(255,255,255,0.025),0_0_0_85px_rgba(255,255,255,0.02)]" aria-hidden="true" />
           <div className="relative">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand-200">Marketing investment</p>
-            <h2 className="mt-3 font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Two campaigns. One clear goal.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-brand-200">Win profitable residential projects now while building long-term commercial grounds maintenance contracts.</p>
+            <h2 className="mt-3 font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Campaign budgets</h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-brand-200">Configured Search budgets for residential services and commercial grounds maintenance. Actual campaign results appear below when available.</p>
             <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-lg bg-lime-400 px-3 py-2 text-brand-900">£750 / month planned</span>
               <span className="rounded-lg border border-brand-500 px-3 py-2 text-brand-100">£525 residential</span>

@@ -57,12 +57,6 @@ async function verifyTurnstile(token: string, ip?: string) {
     (result.hostname === "ehwlandscapes.com" || result.hostname === "www.ehwlandscapes.com");
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (ch) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[ch] ?? ch);
-}
-
 // Called only for a newly created lead, not duplicate network retries.
 async function notifyTeam(lead: { id: number; customerName: string; email: string; phone: string; workType: string; area: string }) {
   const key = process.env.RESEND_API_KEY;
@@ -133,10 +127,11 @@ export async function POST(req: NextRequest) {
   const phone = getString(body, "phone", 100);
   const message = getFirst(body, ["message", "requirements"], 4000);
   const area = getFirst(body, ["location", "property_location", "area"], 240);
-  if (customerName.length < 2 || (!email && !phone) || (email && !/^\S+@\S+\.\S+$/.test(email)) || !message) {
+  if (customerName.length < 2 || (!email && !phone) || (email && !/^\S+@\S+\.\S+$/.test(email)) ) {
     return response({ accepted: false, error: "Please complete the contact details and enquiry" }, 422, origin);
   }
-  const service = getFirst(body, ["service", "site_type", "service_type", "enquiry"], 100).toLowerCase();
+  const service = ["enquiry", "site_type", "service", "service_type"]
+    .map(k => getString(body, k, 100)).filter(Boolean).join(" ").toLowerCase();
   const workType = service.includes("fenc") ? "Fencing"
     : service.includes("hedge") ? "Hedge cutting"
     : service.includes("commercial") || service.includes("management") || service.includes("block")

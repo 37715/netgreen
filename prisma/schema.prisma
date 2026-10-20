@@ -220,6 +220,8 @@ enum LeadFrequency {
 // Sales enquiries live separately from Customers and Projects until the work
 // is won. This keeps quote follow-up focused without polluting the job book.
 model Lead {
+  // Stable digest of an external submission so webhook retries cannot duplicate leads.
+  externalRef   String?    @unique
   id            Int        @id @default(autoincrement())
   customerName  String
   email         String     @default("")
@@ -385,4 +387,27 @@ model RevenueShareWeek {
 
   @@unique([shareId, weekStart])
   @@index([weekStart])
+}
+
+
+// Aggregated, non-personal advertising metrics. The Lead table remains the
+// source of truth for identifiable enquiries and sales progress.
+model MarketingDaily {
+  id            Int      @id @default(autoincrement())
+  date          DateTime @db.Date
+  source        String
+  campaign      String   @default("")
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  spend         Float    @default(0)
+  conversions   Float    @default(0)
+  sessions      Int      @default(0)
+  formLeads     Int      @default(0)
+  phoneClicks   Int      @default(0)
+  profileCalls  Int      @default(0)
+  websiteClicks Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([date, source, campaign])
+  @@index([source, date])
 }

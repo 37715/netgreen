@@ -10,6 +10,8 @@ import {
 import { loadMarketingSheets } from "@/lib/marketing/sheets";
 import { MarketingView } from "@/app/(app)/marketing/view";
 
+export const dynamic = "force-dynamic";
+
 function rangeDays(value: string | undefined): RangeDays {
   if (value === "7" || value === "90") return Number(value) as RangeDays;
   return 30;

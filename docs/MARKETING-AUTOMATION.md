@@ -11,18 +11,35 @@ is reviewed, merged, migrations run and external sources configured.**
 
 ## Formspree webhooks
 
-Create a long random FORMSPREE_WEBHOOK_SECRET in production environment settings.
-Use Formspree's webhook integration (if available on your account) to POST to:
-https://YOUR-NETGREEN-DOMAIN/api/integrations/formspree?token=LONG_SECRET
+Your static EHW website already submits all enquiry forms by `fetch()` to
+`https://formspree.io/f/xnjljokj`, and triggers `generate_lead` after Formspree
+returns success. Do NOT initialise a second Formspree JavaScript SDK or add
+another form submit listener.
 
-Never include the token in client-side HTML, logs or Git. Check Formspree's
-actual webhook JSON structure and map its form field names before enabling.
-Verify the resulting lead appears once even on a retry and doesn't overwrite
-existing sales notes. Formspree webhooks may require a paid plan.
+Formspree's **Simple Webhook** plugin is available on Professional and
+Business plans. Once this branch has passed staging checks and is deployed:
 
-If Formspree cannot deliver a secure webhook, instead use a trusted backend
-relay or server-side submission workflow. Do not post from the public site
-directly to the private Netgreen lead API using embedded credentials.
+1. Enable Webhook under the form's **Workflow** / plugins.
+2. Use the NETGREEN production URL followed by
+   `/api/integrations/formspree` (no secret in URL).
+3. Obtain Formspree's webhook signing secret and set
+   `FORMSPREE_SIGNING_SECRET` as a Vercel *server-side environment variable*.
+4. Confirm the webhook JSON is delivered in `{form, keys, submission}` form
+   with EHW's expected name, email, phone, location, service/site_type and
+   message fields.
+5. The receiver checks `Formspree-Signature`, calculates HMAC-SHA256 over
+   `timestamp + "." + raw_body` and rejects unauthenticated requests.
+6. Test one lead and verify exactly one Netgreen entry; replay the same
+   signed payload to check idempotency. Avoid testing with real customers.
+
+If this plan doesn't support webhooks, keep the working Formspree submission
+in place and use a secure server-side integration or upgrade plan. Never put
+private webhook/API credentials in the public static HTML.
+
+Formspree retries unsuccessful deliveries, so check webhook response times
+and configure alerting on delivery failures. Do not merge/deploy this
+integration until the form mapping, consent/privacy notices, authentication,
+schema migration and tests have been reviewed.
 
 ## Windsor.ai / data import
 

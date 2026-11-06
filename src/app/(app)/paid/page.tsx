@@ -12,10 +12,11 @@ import {
   formatDayLabel,
 } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
-import { setJobStatus, setJobPayment, markCustomerJobsPaid } from "@/app/actions/jobs";
+import { setJobPayment, markCustomerJobsPaid } from "@/app/actions/jobs";
 import { Collapsible } from "@/components/Collapsible";
 import { JobsTabs } from "@/components/JobsTabs";
-import { ChevronLeftIcon, ChevronRightIcon, CheckIcon } from "@/components/icons";
+import { JobStatusToggle } from "@/components/JobStatusToggle";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ type PayJob = {
   title: string;
   price: number;
   status: "SCHEDULED" | "DONE" | "SKIPPED";
+  statusVersion: number;
   paidAt: Date | null;
   paymentMethod: "CASH" | "BANK" | null;
   customer: { id: number; name: string } | null;
@@ -53,6 +55,7 @@ export default async function PaidPage({
         price: true,
         materialsPaid: true,
         status: true,
+        statusVersion: true,
         paidAt: true,
         paymentMethod: true,
         customer: { select: { id: true, name: true } },
@@ -68,6 +71,7 @@ export default async function PaidPage({
         title: true,
         price: true,
         status: true,
+        statusVersion: true,
         paidAt: true,
         paymentMethod: true,
         customer: { select: { id: true, name: true } },
@@ -310,26 +314,6 @@ function Tile({
   );
 }
 
-function DoneTick({ id, done }: { id: number; done: boolean }) {
-  return (
-    <form action={setJobStatus} className="shrink-0">
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="status" value={done ? "SCHEDULED" : "DONE"} />
-      <button
-        type="submit"
-        aria-label={done ? "Mark not done" : "Mark done"}
-        className={`flex h-8 w-8 items-center justify-center rounded-lg border-2 transition-colors ${
-          done
-            ? "border-lime-500 bg-lime-500 text-white"
-            : "border-stone-300 text-transparent hover:border-lime-500 active:bg-lime-100"
-        }`}
-      >
-        <CheckIcon className="h-4 w-4" />
-      </button>
-    </form>
-  );
-}
-
 function PayControl({ job }: { job: PayJob }) {
   if (job.status !== "DONE") {
     return <span className="text-[11px] font-semibold text-stone-300">not done</span>;
@@ -388,7 +372,12 @@ function DayRow({ job, currency }: { job: PayJob; currency: string }) {
   const done = job.status === "DONE";
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <DoneTick id={job.id} done={done} />
+      <JobStatusToggle
+        id={job.id}
+        status={job.status}
+        statusVersion={job.statusVersion}
+        compact
+      />
       <div className="min-w-0 flex-1">
         <div
           className={`break-words text-sm font-semibold ${

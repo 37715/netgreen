@@ -3,7 +3,12 @@
 import { prisma } from "@/lib/db";
 import { parseAmount } from "@/lib/money";
 import { computeRevenueShareWeek } from "@/lib/finance";
-import { fromDateInput, startOfWeek, toStoredDay } from "@/lib/dates";
+import {
+  fromDateInput,
+  startOfWeek,
+  toDateInput,
+  toStoredDay,
+} from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -57,11 +62,27 @@ export async function setRevenueShareActive(formData: FormData) {
 export async function deleteRevenueShare(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
-  await prisma.customer.updateMany({
-    where: { revenueShareId: id },
-    data: { revenueShareId: null },
+  const share = await prisma.revenueShare.findUnique({
+    where: { id },
+    select: { _count: { select: { weeks: true } } },
   });
-  await prisma.revenueShare.delete({ where: { id } });
+  if (!share) return;
+
+  // Never erase figures that have already entered the accounts.
+  if (share._count.weeks > 0) {
+    await prisma.revenueShare.update({
+      where: { id },
+      data: { active: false },
+    });
+  } else {
+    await prisma.$transaction([
+      prisma.customer.updateMany({
+        where: { revenueShareId: id },
+        data: { revenueShareId: null },
+      }),
+      prisma.revenueShare.delete({ where: { id } }),
+    ]);
+  }
   revalidateSharePaths();
   redirect("/revenue-share");
 }
@@ -95,7 +116,9 @@ export async function setRevenueShareCustomers(formData: FormData) {
 function readWeekStart(formData: FormData): Date | null {
   const key = String(formData.get("weekStart") || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
-  return toStoredDay(startOfWeek(fromDateInput(key)));
+  const parsed = fromDateInput(key);
+  if (toDateInput(parsed) !== key) return null;
+  return toStoredDay(startOfWeek(parsed));
 }
 
 /** Save the manually agreed cost for one calendar week. */
@@ -103,7 +126,7 @@ export async function setRevenueShareWeekAmount(formData: FormData) {
   const shareId = Number(formData.get("id"));
   const weekStart = readWeekStart(formData);
   const rawAmount = String(formData.get("amount") ?? "").trim();
-  const amount = parseAmount(formData.get("amount"));
+  const amount = Number(rawAmount);
   if (
     !shareId ||
     !weekStart ||

@@ -7,6 +7,7 @@ import {
   bucketYearMonths,
   splitJobPayments,
   summarizeMoney,
+  revenueShareWeekStarts,
 } from "./finance";
 
 describe("splitJobPayments", () => {
@@ -122,6 +123,20 @@ describe("manual revenue-share costs", () => {
     assert.equal(summary.revenueShareCosts, 35);
     assert.equal(summary.costs, 35);
     assert.equal(summary.profit, 165);
+  });
+
+  it("can render every week back to the oldest recorded activity", () => {
+    const weeks = revenueShareWeekStarts(
+      fromDateInput("2026-10-26"),
+      fromDateInput("2025-12-29")
+    );
+
+    assert.equal(weeks[0].toISOString(), fromDateInput("2026-10-26").toISOString());
+    assert.equal(
+      weeks.at(-1)?.toISOString(),
+      fromDateInput("2025-12-29").toISOString()
+    );
+    assert.equal(weeks.length, 44);
   });
 });
 

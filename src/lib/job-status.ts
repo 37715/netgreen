@@ -48,3 +48,15 @@ export function buildJobStatusToggle(
 export function isJobStatus(value: string): value is JobStatusValue {
   return value === "SCHEDULED" || value === "DONE" || value === "SKIPPED";
 }
+
+/** Guard a payment write so a form rendered before an untick cannot revive it. */
+export function buildJobPaymentGuard(id: number, expectedVersion: number) {
+  return {
+    where: {
+      id,
+      status: "DONE" as const,
+      statusVersion: expectedVersion,
+    },
+    versionIncrement: { increment: 1 as const },
+  };
+}

@@ -21,7 +21,7 @@ function ToggleButton({
       aria-label={done ? "Mark not done" : "Mark done"}
       aria-busy={pending}
       className={`flex items-center justify-center border-2 transition-colors disabled:cursor-wait disabled:opacity-50 ${
-        compact ? "h-8 w-8 rounded-lg" : "h-9 w-9 rounded-xl"
+        compact ? "h-11 w-11 rounded-lg" : "h-11 w-11 rounded-xl"
       } ${
         done
           ? "border-lime-500 bg-lime-500 text-white"

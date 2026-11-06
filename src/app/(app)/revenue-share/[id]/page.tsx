@@ -12,7 +12,6 @@ import {
 import {
   updateRevenueShare,
   setRevenueShareActive,
-  deleteRevenueShare,
   setRevenueShareCustomers,
 } from "@/app/actions/revenueShares";
 import { syncCustomersFromCalendar } from "@/app/actions/customers";
@@ -39,7 +38,11 @@ export default async function RevenueShareDetailPage({
 
   const [settings, weekly, customers, orphanCount] = await Promise.all([
     getSettings(),
-    getRevenueShareWeeks({ weeksBack: 26, shareId: id }).then((d) => d[0]),
+    getRevenueShareWeeks({
+      weeksBack: 26,
+      shareId: id,
+      includeAllHistory: true,
+    }).then((d) => d[0]),
     prisma.customer.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -235,7 +238,7 @@ export default async function RevenueShareDetailPage({
             costs stay in Money.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div>
           <form action={setRevenueShareActive}>
             <input type="hidden" name="id" value={share.id} />
             <input
@@ -245,12 +248,6 @@ export default async function RevenueShareDetailPage({
             />
             <button type="submit" className="btn-secondary">
               {share.active ? "Deactivate" : "Reactivate"}
-            </button>
-          </form>
-          <form action={deleteRevenueShare}>
-            <input type="hidden" name="id" value={share.id} />
-            <button type="submit" className="btn-ghost text-clay-600">
-              Delete
             </button>
           </form>
         </div>

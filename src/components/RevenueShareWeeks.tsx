@@ -2,6 +2,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDayLabel } from "@/lib/dates";
 import type { RevenueShareWeekRow } from "@/lib/finance";
 import { setRevenueShareWeekAmount } from "@/app/actions/revenueShares";
+import { RevenueShareSaveButton } from "@/components/RevenueShareSaveButton";
 
 /** One week with an editable, manually agreed cost. */
 export function RevenueShareWeekRowItem({
@@ -47,12 +48,10 @@ export function RevenueShareWeekRowItem({
               row.manualAmount == null ? "" : row.manualAmount.toFixed(2)
             }
             placeholder="0.00"
-            className="input !py-1.5 text-sm"
+            className="input min-h-11 !py-1.5 text-sm"
           />
         </label>
-        <button type="submit" className="btn-secondary !px-3 !py-2 !text-xs">
-          Save
-        </button>
+        <RevenueShareSaveButton />
       </form>
     </li>
   );

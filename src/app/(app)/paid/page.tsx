@@ -324,6 +324,7 @@ function PayControl({ job }: { job: PayJob }) {
     return (
       <form action={setJobPayment}>
         <input type="hidden" name="id" value={job.id} />
+        <input type="hidden" name="expectedVersion" value={job.statusVersion} />
         <input type="hidden" name="method" value="UNPAID" />
         <button
           type="submit"
@@ -342,6 +343,7 @@ function PayControl({ job }: { job: PayJob }) {
       {(["CASH", "BANK"] as const).map((m) => (
         <form key={m} action={setJobPayment}>
           <input type="hidden" name="id" value={job.id} />
+          <input type="hidden" name="expectedVersion" value={job.statusVersion} />
           <input type="hidden" name="method" value={m} />
           <button
             type="submit"

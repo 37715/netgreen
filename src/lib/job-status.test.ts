@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildJobStatusToggle } from "./job-status";
+import { buildJobPaymentGuard, buildJobStatusToggle } from "./job-status";
 
 describe("buildJobStatusToggle", () => {
   const changedAt = new Date("2026-10-31T12:00:00.000Z");
@@ -53,5 +53,18 @@ describe("buildJobStatusToggle", () => {
       paidAt: null,
       paymentMethod: null,
     });
+  });
+});
+
+describe("buildJobPaymentGuard", () => {
+  it("requires the same done row version and advances it", () => {
+    const guard = buildJobPaymentGuard(12, 5);
+
+    assert.deepEqual(guard.where, {
+      id: 12,
+      status: "DONE",
+      statusVersion: 5,
+    });
+    assert.deepEqual(guard.versionIncrement, { increment: 1 });
   });
 });

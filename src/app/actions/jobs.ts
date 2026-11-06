@@ -6,6 +6,7 @@ import { resolveWaste } from "@/lib/waste";
 import { getSettings } from "@/lib/settings";
 import { fromDateInput, startOfDay, endOfDay, toStoredDay } from "@/lib/dates";
 import {
+  buildJobPaymentGuard,
   buildJobStatusToggle,
   isJobStatus,
   type JobStatusValue,
@@ -296,21 +297,27 @@ export async function completeJob(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     const current = await tx.scheduledJob.findUnique({
       where: { id },
-      select: { status: true },
+      select: { status: true, statusVersion: true },
     });
     if (!current) return;
 
     const statusChanged = current.status !== "DONE";
-    await tx.scheduledJob.update({
-      where: { id },
+    const changed = await tx.scheduledJob.updateMany({
+      where: {
+        id,
+        status: current.status,
+        statusVersion: current.statusVersion,
+      },
       data: {
         status: "DONE",
-        ...(statusChanged ? { statusVersion: { increment: 1 } } : {}),
+        statusVersion: { increment: 1 },
         completedAt: new Date(),
         paidAt: paid ? new Date() : null,
         paymentMethod: paid ? (method as "CASH" | "BANK") : null,
       },
     });
+    if (changed.count !== 1) return;
+
     if (statusChanged) {
       await tx.jobStatusEvent.create({
         data: {
@@ -375,16 +382,30 @@ export async function rainOffDay(formData: FormData) {
 
 export async function setJobPayment(formData: FormData) {
   const id = Number(formData.get("id"));
+  const expectedVersion = Number(formData.get("expectedVersion"));
   const method = String(formData.get("method")); // "CASH" | "BANK" | "UNPAID"
-  await prisma.scheduledJob.update({
-    where: { id },
-    data:
-      method === "UNPAID"
+  if (
+    !Number.isInteger(id) ||
+    id <= 0 ||
+    !Number.isInteger(expectedVersion) ||
+    expectedVersion < 0 ||
+    !["CASH", "BANK", "UNPAID"].includes(method)
+  ) {
+    return;
+  }
+
+  const guard = buildJobPaymentGuard(id, expectedVersion);
+  await prisma.scheduledJob.updateMany({
+    where: guard.where,
+    data: {
+      ...(method === "UNPAID"
         ? { paidAt: null, paymentMethod: null }
         : {
             paidAt: new Date(),
-            paymentMethod: method === "CASH" ? "CASH" : "BANK",
-          },
+            paymentMethod: method as "CASH" | "BANK",
+          }),
+      statusVersion: guard.versionIncrement,
+    },
   });
   revalidatePath("/calendar");
   revalidatePath("/paid");
@@ -406,7 +427,11 @@ export async function markCustomerJobsPaid(formData: FormData) {
   const method = String(formData.get("method")) === "CASH" ? "CASH" : "BANK";
   await prisma.scheduledJob.updateMany({
     where: { customerId, status: "DONE", paidAt: null },
-    data: { paidAt: new Date(), paymentMethod: method },
+    data: {
+      paidAt: new Date(),
+      paymentMethod: method,
+      statusVersion: { increment: 1 },
+    },
   });
   revalidatePath("/");
   revalidatePath("/calendar");

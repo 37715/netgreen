@@ -700,17 +700,34 @@ function toPence(amount: number): number {
  * progress plus the previous `weeksBack` weeks. Job and percentage figures are
  * reference context only. Stored weekly amounts are manually entered costs.
  */
+export function revenueShareWeekStarts(
+  currentWeek: Date,
+  firstWeek: Date
+): Date[] {
+  const current = startOfWeek(currentWeek);
+  const first = startOfWeek(firstWeek);
+  const weekMs = 7 * 86_400_000;
+  const weeks = Math.max(
+    0,
+    Math.round((current.getTime() - first.getTime()) / weekMs)
+  );
+  return Array.from({ length: weeks + 1 }, (_, i) =>
+    addDays(current, -7 * i)
+  );
+}
+
 export async function getRevenueShareWeeks({
   weeksBack = 8,
   shareId,
   now = new Date(),
+  includeAllHistory = false,
 }: {
   weeksBack?: number;
   shareId?: number;
   now?: Date;
+  includeAllHistory?: boolean;
 } = {}): Promise<RevenueShareDealWeeks[]> {
   const currentWeekStart = startOfWeek(now);
-  const firstWeekStart = addDays(currentWeekStart, -7 * weeksBack);
 
   const deals = await prisma.revenueShare.findMany({
     where: shareId != null ? { id: shareId } : { active: true },
@@ -725,6 +742,25 @@ export async function getRevenueShareWeeks({
   const customerIds = [
     ...new Set(deals.flatMap((d) => d.customers.map((c) => c.id))),
   ];
+
+  let firstWeekStart = addDays(currentWeekStart, -7 * weeksBack);
+  if (includeAllHistory) {
+    const oldestJob =
+      customerIds.length > 0
+        ? await prisma.scheduledJob.aggregate({
+            where: { customerId: { in: customerIds } },
+            _min: { date: true },
+          })
+        : null;
+    const candidates = [
+      firstWeekStart,
+      ...(oldestJob?._min.date ? [oldestJob._min.date] : []),
+      ...deals.flatMap((deal) => deal.weeks.map((week) => week.weekStart)),
+    ];
+    firstWeekStart = candidates.reduce((oldest, date) =>
+      date.getTime() < oldest.getTime() ? date : oldest
+    );
+  }
 
   const jobs =
     customerIds.length > 0
@@ -764,8 +800,9 @@ export async function getRevenueShareWeeks({
     byWeek.set(weekKey, week);
   }
 
-  const weekStarts = Array.from({ length: weeksBack + 1 }, (_, i) =>
-    addDays(currentWeekStart, -7 * i)
+  const weekStarts = revenueShareWeekStarts(
+    currentWeekStart,
+    firstWeekStart
   );
 
   return deals.map((deal) => {

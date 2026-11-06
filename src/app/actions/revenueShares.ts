@@ -118,7 +118,9 @@ function readWeekStart(formData: FormData): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
   const parsed = fromDateInput(key);
   if (toDateInput(parsed) !== key) return null;
-  return toStoredDay(startOfWeek(parsed));
+  const monday = startOfWeek(parsed);
+  if (toDateInput(monday) !== key) return null;
+  return toStoredDay(monday);
 }
 
 /** Save the manually agreed cost for one calendar week. */
@@ -128,7 +130,8 @@ export async function setRevenueShareWeekAmount(formData: FormData) {
   const rawAmount = String(formData.get("amount") ?? "").trim();
   const amount = Number(rawAmount);
   if (
-    !shareId ||
+    !Number.isInteger(shareId) ||
+    shareId <= 0 ||
     !weekStart ||
     rawAmount === "" ||
     !Number.isFinite(amount) ||

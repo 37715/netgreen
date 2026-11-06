@@ -52,6 +52,7 @@ export function summarizeMoney(input: {
   overheads: { amount: number }[];
   projectCosts: { amount: number; reimbursable?: boolean }[];
   labour: { amount: number }[];
+  revenueShares: { amount: number }[];
 }): RangeSummary {
   const quickIncome = sum(input.jobs.map((j) => j.price));
   const wasteIncome = sum(
@@ -66,18 +67,7 @@ export function summarizeMoney(input: {
     input.projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
   );
   const labourCosts = sum(input.labour.map((l) => l.amount));
-  const revenueShareCosts = revenueShareCostForJobs(
-    input.jobs.map((j) => ({
-      price: j.price,
-      wasteBags: j.wasteBags,
-      wasteBagPrice: j.wasteBagPrice,
-      materialsCharge: j.materialsCharge,
-      sharePercent:
-        j.customer?.revenueShare?.active === true
-          ? j.customer.revenueShare.percent
-          : null,
-    }))
-  );
+  const revenueShareCosts = sum(input.revenueShares.map((r) => r.amount));
 
   const revenue = quickIncome + projectIncome;
   const costs =
@@ -110,7 +100,7 @@ export function summarizeMoney(input: {
  * Cash-basis summary for a date range:
  *  revenue = quick jobs actually PAID + project payments received
  *  costs   = overheads + project costs + extra crew + materials we paid for
- *            + revenue share owed on tagged customers' jobs
+ *            + manually recorded weekly revenue-share costs
  *  profit  = revenue - costs
  *
  * Ticking a job "done" does nothing to the money here — a job only counts
@@ -264,6 +254,7 @@ export function costLinesForMonth(input: {
     reimbursable?: boolean;
   }[];
   labour: { amount: number; name?: string | null }[];
+  revenueShares: { amount: number; name?: string | null }[];
 }): YearMonthCost[] {
   const lines: YearMonthCost[] = [];
 
@@ -299,19 +290,18 @@ export function costLinesForMonth(input: {
     });
   }
 
-  const share = revenueShareCostForJobs(
-    input.jobs.map((j) => ({
-      price: j.price,
-      wasteBags: j.wasteBags,
-      wasteBagPrice: j.wasteBagPrice,
-      materialsCharge: j.materialsCharge,
-      sharePercent:
-        j.customer?.revenueShare?.active === true
-          ? j.customer.revenueShare.percent
-          : null,
-    }))
-  );
-  if (share > 0) lines.push({ label: "Revenue share", amount: share });
+  const sharesByName = new Map<string, number>();
+  for (const share of input.revenueShares) {
+    if (share.amount <= 0) continue;
+    const label = namedAmount(share.name, "Revenue share");
+    sharesByName.set(label, (sharesByName.get(label) ?? 0) + share.amount);
+  }
+  for (const [name, amount] of sharesByName) {
+    lines.push({
+      label: name === "Revenue share" ? name : `${name} revenue share`,
+      amount,
+    });
+  }
 
   return lines.sort((a, b) => b.amount - a.amount);
 }
@@ -335,6 +325,7 @@ export function bucketYearMonths(
       category?: string;
     }>[];
     labour: Dated<{ amount: number; name?: string | null }>[];
+    revenueShares: Dated<{ amount: number; name?: string | null }>[];
   }
 ): YearMonthRow[] {
   const nowKey = calendarMonthKey(now);
@@ -346,12 +337,14 @@ export function bucketYearMonths(
     const overheads = inMonth(data.overheads);
     const projectCosts = inMonth(data.projectCosts);
     const labour = inMonth(data.labour);
+    const revenueShares = inMonth(data.revenueShares);
     const summary = summarizeMoney({
       jobs,
       payments: inMonth(data.payments),
       overheads,
       projectCosts,
       labour,
+      revenueShares,
     });
     return {
       key,
@@ -360,7 +353,13 @@ export function bucketYearMonths(
       profit: summary.profit,
       isCurrent: key === nowKey,
       isFuture: key > nowKey,
-      costs: costLinesForMonth({ jobs, overheads, projectCosts, labour }),
+      costs: costLinesForMonth({
+        jobs,
+        overheads,
+        projectCosts,
+        labour,
+        revenueShares,
+      }),
     };
   });
 }

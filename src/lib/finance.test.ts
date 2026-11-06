@@ -6,6 +6,7 @@ import {
   revenueShareCostForJobs,
   bucketYearMonths,
   splitJobPayments,
+  summarizeMoney,
 } from "./finance";
 
 describe("splitJobPayments", () => {
@@ -98,6 +99,32 @@ describe("revenueShareCostForJobs", () => {
   });
 });
 
+describe("manual revenue-share costs", () => {
+  it("uses stored weekly amounts and ignores automatic job percentages", () => {
+    const summary = summarizeMoney({
+      jobs: [
+        {
+          price: 200,
+          wasteBags: null,
+          wasteBagPrice: null,
+          materialsCharge: null,
+          materialsPaid: 0,
+          customer: { revenueShare: { percent: 50, active: true } },
+        },
+      ],
+      payments: [],
+      overheads: [],
+      projectCosts: [],
+      labour: [],
+      revenueShares: [{ amount: 35 }],
+    });
+
+    assert.equal(summary.revenueShareCosts, 35);
+    assert.equal(summary.costs, 35);
+    assert.equal(summary.profit, 165);
+  });
+});
+
 describe("bucketYearMonths", () => {
   it("puts each month's revenue and profit in its own cell", () => {
     const months = bucketYearMonths(2026, fromDateInput("2026-08-14"), {
@@ -129,6 +156,7 @@ describe("bucketYearMonths", () => {
       labour: [
         { date: fromDateInput("2026-01-12"), amount: 90, name: "Hugo" },
       ],
+      revenueShares: [],
     });
 
     assert.equal(months.length, 12);
@@ -144,5 +172,36 @@ describe("bucketYearMonths", () => {
     assert.equal(months[1].profit, 200);
     assert.equal(months[7].isCurrent, true);
     assert.equal(months[8].isFuture, true);
+  });
+
+  it("buckets a manual weekly share by its Monday", () => {
+    const months = bucketYearMonths(2026, fromDateInput("2026-08-14"), {
+      jobs: [],
+      payments: [],
+      overheads: [],
+      projectCosts: [],
+      labour: [],
+      revenueShares: [
+        {
+          date: fromDateInput("2026-07-27"),
+          amount: 125,
+          name: "Howard",
+        },
+        {
+          date: fromDateInput("2026-08-03"),
+          amount: 75,
+          name: "Howard",
+        },
+      ],
+    });
+
+    assert.equal(months[6].profit, -125);
+    assert.deepEqual(months[6].costs, [
+      { label: "Howard revenue share", amount: 125 },
+    ]);
+    assert.equal(months[7].profit, -75);
+    assert.deepEqual(months[7].costs, [
+      { label: "Howard revenue share", amount: 75 },
+    ]);
   });
 });

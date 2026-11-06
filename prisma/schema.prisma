@@ -139,10 +139,14 @@ model ScheduledJob {
   materialsCharge Float?
   materialsPaid   Float?
   materialsNote   String @default("")
-  status      JobStatus @default(SCHEDULED)
-  sortOrder   Int       @default(0)
-  notes       String    @default("")
-  completedAt DateTime?
+  status        JobStatus @default(SCHEDULED)
+  // Incremented on every status mutation. Checkbox writes compare this with
+  // the rendered version so an old page cannot overwrite a newer status.
+  statusVersion Int       @default(0)
+  statusEvents  JobStatusEvent[]
+  sortOrder     Int       @default(0)
+  notes         String    @default("")
+  completedAt   DateTime?
   // Payment collection: null paidAt on a DONE job means the customer still owes.
   paidAt        DateTime?
   paymentMethod PaymentMethod?
@@ -161,6 +165,19 @@ model ScheduledJob {
   // One auto-generated occurrence per customer per stored day (UTC noon).
   // Prevents racey calendar loads from creating dozens of copies.
   @@unique([recurringSourceCustomerId, date])
+}
+
+// Append-only history of every successful status transition.
+model JobStatusEvent {
+  id         Int          @id @default(autoincrement())
+  job        ScheduledJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId      Int
+  fromStatus JobStatus
+  toStatus   JobStatus
+  actorEmail String?
+  changedAt  DateTime     @default(now())
+
+  @@index([jobId, changedAt])
 }
 
 enum ProjectStatus {

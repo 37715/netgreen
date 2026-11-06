@@ -5,6 +5,12 @@ import { parseAmount, computeHourlyPrice } from "@/lib/money";
 import { resolveWaste } from "@/lib/waste";
 import { getSettings } from "@/lib/settings";
 import { fromDateInput, startOfDay, endOfDay, toStoredDay } from "@/lib/dates";
+import {
+  buildJobStatusToggle,
+  isJobStatus,
+  type JobStatusValue,
+} from "@/lib/job-status";
+import { auth } from "@/auth";
 import { PricingType, Recurrence } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -242,18 +248,35 @@ export async function createQuickJob(formData: FormData) {
 
 export async function setJobStatus(formData: FormData) {
   const id = Number(formData.get("id"));
-  const status = String(formData.get("status")) as
-    | "SCHEDULED"
-    | "DONE"
-    | "SKIPPED";
-  await prisma.scheduledJob.update({
-    where: { id },
-    data: {
-      status,
-      completedAt: status === "DONE" ? new Date() : null,
-      // Un-doing a job also clears its payment record.
-      ...(status !== "DONE" ? { paidAt: null, paymentMethod: null } : {}),
-    },
+  const expectedVersion = Number(formData.get("expectedVersion"));
+  const expectedStatus = String(formData.get("expectedStatus"));
+  if (
+    !Number.isInteger(id) ||
+    id <= 0 ||
+    !Number.isInteger(expectedVersion) ||
+    expectedVersion < 0 ||
+    !isJobStatus(expectedStatus)
+  ) {
+    return;
+  }
+
+  const actorEmail = (await auth())?.user?.email ?? null;
+  const mutation = buildJobStatusToggle({
+    id,
+    expectedStatus,
+    expectedVersion,
+  });
+
+  await prisma.$transaction(async (tx) => {
+    const changed = await tx.scheduledJob.updateMany({
+      where: mutation.where,
+      data: mutation.data,
+    });
+    if (changed.count !== 1) return;
+
+    await tx.jobStatusEvent.create({
+      data: { ...mutation.event, actorEmail },
+    });
   });
   revalidatePath("/calendar");
   revalidatePath("/paid");
@@ -269,14 +292,35 @@ export async function completeJob(formData: FormData) {
   if (!id) return;
   const method = String(formData.get("method") || "UNPAID");
   const paid = method === "CASH" || method === "BANK";
-  await prisma.scheduledJob.update({
-    where: { id },
-    data: {
-      status: "DONE",
-      completedAt: new Date(),
-      paidAt: paid ? new Date() : null,
-      paymentMethod: paid ? (method as "CASH" | "BANK") : null,
-    },
+  const actorEmail = (await auth())?.user?.email ?? null;
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.scheduledJob.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!current) return;
+
+    const statusChanged = current.status !== "DONE";
+    await tx.scheduledJob.update({
+      where: { id },
+      data: {
+        status: "DONE",
+        ...(statusChanged ? { statusVersion: { increment: 1 } } : {}),
+        completedAt: new Date(),
+        paidAt: paid ? new Date() : null,
+        paymentMethod: paid ? (method as "CASH" | "BANK") : null,
+      },
+    });
+    if (statusChanged) {
+      await tx.jobStatusEvent.create({
+        data: {
+          jobId: id,
+          fromStatus: current.status,
+          toStatus: "DONE",
+          actorEmail,
+        },
+      });
+    }
   });
   revalidatePath("/calendar");
   revalidatePath("/paid");
@@ -290,12 +334,40 @@ export async function completeJob(formData: FormData) {
  */
 export async function rainOffDay(formData: FormData) {
   const from = fromDateInput(String(formData.get("from") || ""));
-  await prisma.scheduledJob.updateMany({
-    where: {
-      date: { gte: startOfDay(from), lte: endOfDay(from) },
-      status: "SCHEDULED",
-    },
-    data: { status: "SKIPPED", paidAt: null, paymentMethod: null },
+  const actorEmail = (await auth())?.user?.email ?? null;
+  await prisma.$transaction(async (tx) => {
+    const scheduled = await tx.scheduledJob.findMany({
+      where: {
+        date: { gte: startOfDay(from), lte: endOfDay(from) },
+        status: "SCHEDULED",
+      },
+      select: { id: true },
+    });
+
+    const changedIds: number[] = [];
+    for (const job of scheduled) {
+      const changed = await tx.scheduledJob.updateMany({
+        where: { id: job.id, status: "SCHEDULED" },
+        data: {
+          status: "SKIPPED",
+          statusVersion: { increment: 1 },
+          paidAt: null,
+          paymentMethod: null,
+        },
+      });
+      if (changed.count === 1) changedIds.push(job.id);
+    }
+
+    if (changedIds.length > 0) {
+      await tx.jobStatusEvent.createMany({
+        data: changedIds.map((jobId) => ({
+          jobId,
+          fromStatus: "SCHEDULED" as JobStatusValue,
+          toStatus: "SKIPPED" as JobStatusValue,
+          actorEmail,
+        })),
+      });
+    }
   });
   revalidatePath("/calendar");
   revalidatePath("/");

@@ -3,7 +3,12 @@
 import { prisma } from "@/lib/db";
 import { parseAmount } from "@/lib/money";
 import { computeRevenueShareWeek } from "@/lib/finance";
-import { fromDateInput, startOfWeek, toStoredDay } from "@/lib/dates";
+import {
+  fromDateInput,
+  startOfWeek,
+  toDateInput,
+  toStoredDay,
+} from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -57,11 +62,27 @@ export async function setRevenueShareActive(formData: FormData) {
 export async function deleteRevenueShare(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
-  await prisma.customer.updateMany({
-    where: { revenueShareId: id },
-    data: { revenueShareId: null },
+  const share = await prisma.revenueShare.findUnique({
+    where: { id },
+    select: { _count: { select: { weeks: true } } },
   });
-  await prisma.revenueShare.delete({ where: { id } });
+  if (!share) return;
+
+  // Never erase figures that have already entered the accounts.
+  if (share._count.weeks > 0) {
+    await prisma.revenueShare.update({
+      where: { id },
+      data: { active: false },
+    });
+  } else {
+    await prisma.$transaction([
+      prisma.customer.updateMany({
+        where: { revenueShareId: id },
+        data: { revenueShareId: null },
+      }),
+      prisma.revenueShare.delete({ where: { id } }),
+    ]);
+  }
   revalidateSharePaths();
   redirect("/revenue-share");
 }
@@ -95,48 +116,50 @@ export async function setRevenueShareCustomers(formData: FormData) {
 function readWeekStart(formData: FormData): Date | null {
   const key = String(formData.get("weekStart") || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
-  return toStoredDay(startOfWeek(fromDateInput(key)));
+  const parsed = fromDateInput(key);
+  if (toDateInput(parsed) !== key) return null;
+  const monday = startOfWeek(parsed);
+  if (toDateInput(monday) !== key) return null;
+  return toStoredDay(monday);
 }
 
-/**
- * Settle one calendar week: recompute the figure server-side and snapshot it,
- * so later edits to those jobs can't change what was already paid.
- */
-export async function markRevenueShareWeekSent(formData: FormData) {
+/** Save the manually agreed cost for one calendar week. */
+export async function setRevenueShareWeekAmount(formData: FormData) {
   const shareId = Number(formData.get("id"));
   const weekStart = readWeekStart(formData);
-  if (!shareId || !weekStart) return;
+  const rawAmount = String(formData.get("amount") ?? "").trim();
+  const amount = Number(rawAmount);
+  if (
+    !Number.isInteger(shareId) ||
+    shareId <= 0 ||
+    !weekStart ||
+    rawAmount === "" ||
+    !Number.isFinite(amount) ||
+    amount < 0
+  ) {
+    return;
+  }
 
   const totals = await computeRevenueShareWeek(shareId, weekStart);
   if (!totals) return;
+  const roundedAmount = Math.round(amount * 100) / 100;
 
   await prisma.revenueShareWeek.upsert({
     where: { shareId_weekStart: { shareId, weekStart } },
     create: {
       shareId,
       weekStart,
-      amount: totals.amount,
+      amount: roundedAmount,
       labourTakings: totals.labourTakings,
       jobs: totals.jobs,
       sentAt: new Date(),
     },
     update: {
-      amount: totals.amount,
+      amount: roundedAmount,
       labourTakings: totals.labourTakings,
       jobs: totals.jobs,
       sentAt: new Date(),
     },
   });
-  revalidateSharePaths(shareId);
-}
-
-/** Undo a settled week — puts it back to a live figure. */
-export async function unmarkRevenueShareWeekSent(formData: FormData) {
-  const shareId = Number(formData.get("id"));
-  const weekStart = readWeekStart(formData);
-  if (!shareId || !weekStart) return;
-  await prisma.revenueShareWeek
-    .delete({ where: { shareId_weekStart: { shareId, weekStart } } })
-    .catch(() => null);
   revalidateSharePaths(shareId);
 }

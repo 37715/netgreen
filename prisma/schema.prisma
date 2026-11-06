@@ -372,9 +372,8 @@ model Debt {
   createdAt DateTime  @default(now())
 }
 
-// % of labour takings from a tagged customer book (e.g. seller earn-out).
-// Runs on calendar weeks (Mon–Sun): amount = sum(done job price − waste −
-// materials charged) × percent / 100, reset every Monday.
+// Weekly manual cost for a tagged customer book (e.g. seller earn-out).
+// The percentage remains as reference context; Money uses RevenueShareWeek.amount.
 model RevenueShare {
   id        Int                    @id @default(autoincrement())
   name      String
@@ -386,8 +385,8 @@ model RevenueShare {
   createdAt DateTime               @default(now())
 }
 
-// A settled week: the figure is snapshotted when it's sent so later edits to
-// old jobs can't change what was already paid out.
+// A manually recorded weekly cost. Historical amounts remain in Money even if
+// the parent share is later inactive.
 model RevenueShareWeek {
   id             Int          @id @default(autoincrement())
   share          RevenueShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
@@ -397,6 +396,7 @@ model RevenueShareWeek {
   amount         Float        @default(0)
   labourTakings  Float        @default(0)
   jobs           Int          @default(0)
+  // Last manual save time. The legacy name is retained to avoid a risky column rename.
   sentAt         DateTime     @default(now())
   createdAt      DateTime     @default(now())
 

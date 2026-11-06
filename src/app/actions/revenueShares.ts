@@ -98,45 +98,42 @@ function readWeekStart(formData: FormData): Date | null {
   return toStoredDay(startOfWeek(fromDateInput(key)));
 }
 
-/**
- * Settle one calendar week: recompute the figure server-side and snapshot it,
- * so later edits to those jobs can't change what was already paid.
- */
-export async function markRevenueShareWeekSent(formData: FormData) {
+/** Save the manually agreed cost for one calendar week. */
+export async function setRevenueShareWeekAmount(formData: FormData) {
   const shareId = Number(formData.get("id"));
   const weekStart = readWeekStart(formData);
-  if (!shareId || !weekStart) return;
+  const rawAmount = String(formData.get("amount") ?? "").trim();
+  const amount = parseAmount(formData.get("amount"));
+  if (
+    !shareId ||
+    !weekStart ||
+    rawAmount === "" ||
+    !Number.isFinite(amount) ||
+    amount < 0
+  ) {
+    return;
+  }
 
   const totals = await computeRevenueShareWeek(shareId, weekStart);
   if (!totals) return;
+  const roundedAmount = Math.round(amount * 100) / 100;
 
   await prisma.revenueShareWeek.upsert({
     where: { shareId_weekStart: { shareId, weekStart } },
     create: {
       shareId,
       weekStart,
-      amount: totals.amount,
+      amount: roundedAmount,
       labourTakings: totals.labourTakings,
       jobs: totals.jobs,
       sentAt: new Date(),
     },
     update: {
-      amount: totals.amount,
+      amount: roundedAmount,
       labourTakings: totals.labourTakings,
       jobs: totals.jobs,
       sentAt: new Date(),
     },
   });
-  revalidateSharePaths(shareId);
-}
-
-/** Undo a settled week — puts it back to a live figure. */
-export async function unmarkRevenueShareWeekSent(formData: FormData) {
-  const shareId = Number(formData.get("id"));
-  const weekStart = readWeekStart(formData);
-  if (!shareId || !weekStart) return;
-  await prisma.revenueShareWeek
-    .delete({ where: { shareId_weekStart: { shareId, weekStart } } })
-    .catch(() => null);
   revalidateSharePaths(shareId);
 }

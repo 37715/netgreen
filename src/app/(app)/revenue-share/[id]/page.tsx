@@ -60,7 +60,7 @@ export default async function RevenueShareDetailPage({
     <div>
       <PageHeader
         title={share.name}
-        subtitle={`${share.percent}% of labour takings from tagged customers`}
+        subtitle="Enter the agreed weekly cost manually; tagged jobs are reference only"
         action={
           <Link href="/revenue-share" className="btn-secondary">
             All shares
@@ -82,18 +82,18 @@ export default async function RevenueShareDetailPage({
                 Weekly payouts
               </h2>
               <p className="mt-0.5 text-xs text-stone-500">
-                {weekly.percent}% of labour takings, Monday to Sunday. Marking a
-                week sent locks that figure.
+                Enter each Monday-to-Sunday amount manually. Every saved amount
+                is included in Money costs and can be changed later.
               </p>
             </div>
-            {weekly.weeksSent > 0 && (
+            {weekly.weeksRecorded > 0 && (
               <div className="text-right">
                 <div className="ledger sum text-xl font-extrabold text-stone-900">
-                  {formatMoney(weekly.totalSent, settings.currency)}
+                  {formatMoney(weekly.totalRecorded, settings.currency)}
                 </div>
                 <div className="text-[11px] text-stone-400">
-                  sent across {weekly.weeksSent}{" "}
-                  {weekly.weeksSent === 1 ? "week" : "weeks"}
+                  recorded across {weekly.weeksRecorded}{" "}
+                  {weekly.weeksRecorded === 1 ? "week" : "weeks"}
                 </div>
               </div>
             )}
@@ -115,8 +115,8 @@ export default async function RevenueShareDetailPage({
               shareId={weekly.id}
               rows={weekly.history}
               currency={settings.currency}
-              totalSent={weekly.totalSent}
-              weeksSent={weekly.weeksSent}
+              totalRecorded={weekly.totalRecorded}
+              weeksRecorded={weekly.weeksRecorded}
               showTotals={false}
             />
           </div>
@@ -133,7 +133,7 @@ export default async function RevenueShareDetailPage({
             <input name="name" defaultValue={share.name} required className="input" />
           </div>
           <div>
-            <label className="label">Share (%)</label>
+            <label className="label">Reference share (%)</label>
             <input
               name="percent"
               type="number"
@@ -160,9 +160,9 @@ export default async function RevenueShareDetailPage({
       <div className="card mt-4 p-5">
         <h2 className="text-sm font-bold text-stone-800">Customers in this book</h2>
         <p className="mt-0.5 text-xs text-stone-500">
-          Tick every customer that belongs to this share. Done jobs for them count
-          toward the weekly figure on Money. Currently {selected.size} selected ·{" "}
-          {customers.length} on the list.
+          Tick the customers connected to this share. Their jobs and labour show
+          as reference when you decide the manual weekly amount. Currently{" "}
+          {selected.size} selected · {customers.length} on the list.
         </p>
 
         {orphanCount > 0 && (
@@ -231,7 +231,8 @@ export default async function RevenueShareDetailPage({
             {share.active ? "Active" : "Inactive"}
           </div>
           <p className="text-xs text-stone-500">
-            Inactive deals are hidden from the Money calculator.
+            Inactive deals are hidden from the dashboard, but saved historical
+            costs stay in Money.
           </p>
         </div>
         <div className="flex gap-2">

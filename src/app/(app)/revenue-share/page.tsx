@@ -16,7 +16,7 @@ export default async function RevenueShareListPage() {
     <div>
       <PageHeader
         title="Revenue share"
-        subtitle="Pay someone a percentage of labour takings from a tagged set of customers — e.g. a seller earn-out on an acquired book. Worked out fresh every calendar week, Monday to Sunday."
+        subtitle="Record the agreed weekly amount manually. Saved amounts are editable and included in Money as business costs."
       />
 
       <div className="mb-4">
@@ -32,7 +32,7 @@ export default async function RevenueShareListPage() {
               />
             </div>
             <div>
-              <label className="label">Share (%)</label>
+              <label className="label">Reference share (%)</label>
               <input
                 name="percent"
                 type="number"
@@ -86,12 +86,12 @@ export default async function RevenueShareListPage() {
                     )}
                   </div>
                   <div className="text-xs text-stone-400">
-                    {s.percent}% weekly · {s._count.customers}{" "}
+                    Manual weekly cost · {s._count.customers}{" "}
                     {s._count.customers === 1 ? "customer" : "customers"}
                     {s._count.weeks > 0 &&
                       ` · ${s._count.weeks} ${
                         s._count.weeks === 1 ? "week" : "weeks"
-                      } sent`}
+                      } recorded`}
                   </div>
                 </div>
                 <span className="text-xs font-semibold text-brand-700">Open</span>

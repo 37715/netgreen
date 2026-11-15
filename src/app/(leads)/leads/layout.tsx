@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Lead tracker · netgreen",
   description: "Track gardening enquiries, quotes and follow-ups.",

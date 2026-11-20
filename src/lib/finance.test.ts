@@ -189,6 +189,40 @@ describe("bucketYearMonths", () => {
     assert.equal(months[8].isFuture, true);
   });
 
+  it("replaces a previous month's cost when that week's saved amount changes", () => {
+    const now = fromDateInput("2026-11-20");
+    const blank = {
+      jobs: [],
+      payments: [],
+      overheads: [],
+      projectCosts: [],
+      labour: [],
+    };
+    const before = bucketYearMonths(2026, now, {
+      ...blank,
+      revenueShares: [
+        { date: fromDateInput("2026-09-14"), amount: 40, name: "Howard" },
+      ],
+    });
+    const after = bucketYearMonths(2026, now, {
+      ...blank,
+      revenueShares: [
+        { date: fromDateInput("2026-09-14"), amount: 125, name: "Howard" },
+      ],
+    });
+
+    assert.equal(before[8].profit, -40);
+    assert.deepEqual(before[8].costs, [
+      { label: "Howard revenue share", amount: 40 },
+    ]);
+    assert.equal(after[8].profit, -125);
+    assert.deepEqual(after[8].costs, [
+      { label: "Howard revenue share", amount: 125 },
+    ]);
+    assert.equal(after[7].profit, 0);
+    assert.equal(after[9].profit, 0);
+  });
+
   it("buckets a manual weekly share by its Monday", () => {
     const months = bucketYearMonths(2026, fromDateInput("2026-08-14"), {
       jobs: [],

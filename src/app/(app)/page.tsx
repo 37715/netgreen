@@ -218,7 +218,7 @@ export default async function DashboardPage({
             <Row
               label="Revenue share"
               value={formatMoney(summary.revenueShareCosts, currency)}
-              hint="Assuming you've paid it"
+              hint="Saved amounts for weeks starting in this period"
             />
           </dl>
           <div className="mt-auto pt-4">

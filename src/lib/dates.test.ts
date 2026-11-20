@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   addMonths,
+  calendarDayKey,
+  endOfDay,
   formatMonthYear,
   isSameMonth,
   fromDateInput,
@@ -77,6 +79,23 @@ describe("resolveMoneyRange", () => {
     assert.equal(range.from.toISOString().slice(0, 10), "2026-08-01");
     assert.equal(range.to.toISOString().slice(0, 10), "2026-08-31");
     assert.equal(range.label, "August 2026");
+  });
+
+  it("keeps a summer month inside that month when the end is read again", () => {
+    const range = resolveMoneyRange("month", fromDateInput("2026-08-14"));
+    const end = endOfDay(range.to);
+
+    assert.equal(calendarDayKey(end), "2026-08-31");
+    assert.ok(end.getTime() < fromDateInput("2026-09-01").getTime());
+    assert.ok(end.getTime() >= fromDateInput("2026-08-31").getTime());
+  });
+
+  it("keeps a summer week from including the next Monday", () => {
+    const range = resolveMoneyRange("week", fromDateInput("2026-08-31"));
+    const end = endOfDay(range.to);
+
+    assert.equal(calendarDayKey(end), "2026-09-06");
+    assert.ok(end.getTime() < fromDateInput("2026-09-07").getTime());
   });
 
   it("uses the selected calendar year", () => {

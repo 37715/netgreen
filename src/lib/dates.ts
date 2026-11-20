@@ -36,8 +36,21 @@ export function startOfDay(d: Date): Date {
 }
 
 export function endOfDay(d: Date): Date {
-  const { y, m, d: day } = partsFromKey(calendarDayKey(d));
-  return new Date(Date.UTC(y, m - 1, day, 23, 59, 59, 999));
+  const key = calendarDayKey(d);
+  const { y, m, d: day } = partsFromKey(key);
+  // 23:59 UTC is already the next UK morning during British Summer Time.
+  // Stop at the last whole hour that is still this UK day, so reading the
+  // end again cannot pull the following Monday into the previous period.
+  let hour = 12;
+  while (hour < 23) {
+    const nextHour = new Date(Date.UTC(y, m - 1, day, hour + 1, 0, 0, 0));
+    if (calendarDayKey(nextHour) !== key) break;
+    hour += 1;
+  }
+  const end = new Date(Date.UTC(y, m - 1, day, hour, 59, 59, 999));
+  return calendarDayKey(end) === key
+    ? end
+    : new Date(Date.UTC(y, m - 1, day, hour, 0, 0, 0) - 1);
 }
 
 export function addDays(d: Date, days: number): Date {

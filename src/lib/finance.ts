@@ -52,6 +52,7 @@ export function summarizeMoney(input: {
   overheads: { amount: number }[];
   projectCosts: { amount: number; reimbursable?: boolean }[];
   labour: { amount: number }[];
+  revenueShares: { amount: number }[];
 }): RangeSummary {
   const quickIncome = sum(input.jobs.map((j) => j.price));
   const wasteIncome = sum(
@@ -66,18 +67,7 @@ export function summarizeMoney(input: {
     input.projectCosts.filter((c) => !c.reimbursable).map((c) => c.amount)
   );
   const labourCosts = sum(input.labour.map((l) => l.amount));
-  const revenueShareCosts = revenueShareCostForJobs(
-    input.jobs.map((j) => ({
-      price: j.price,
-      wasteBags: j.wasteBags,
-      wasteBagPrice: j.wasteBagPrice,
-      materialsCharge: j.materialsCharge,
-      sharePercent:
-        j.customer?.revenueShare?.active === true
-          ? j.customer.revenueShare.percent
-          : null,
-    }))
-  );
+  const revenueShareCosts = sum(input.revenueShares.map((r) => r.amount));
 
   const revenue = quickIncome + projectIncome;
   const costs =
@@ -110,7 +100,7 @@ export function summarizeMoney(input: {
  * Cash-basis summary for a date range:
  *  revenue = quick jobs actually PAID + project payments received
  *  costs   = overheads + project costs + extra crew + materials we paid for
- *            + revenue share owed on tagged customers' jobs
+ *            + manually recorded weekly revenue-share costs
  *  profit  = revenue - costs
  *
  * Ticking a job "done" does nothing to the money here — a job only counts
@@ -121,39 +111,39 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
   const gte = startOfDay(from);
   const lte = endOfDay(to);
 
-  const [doneJobs, payments, overheads, projectCosts, labour] = await Promise.all([
-    prisma.scheduledJob.findMany({
-      where: { status: "DONE", paidAt: { not: null }, date: { gte, lte } },
-      select: {
-        price: true,
-        wasteBags: true,
-        wasteBagPrice: true,
-        materialsCharge: true,
-        materialsPaid: true,
-        customer: {
-          select: {
-            revenueShare: { select: { percent: true, active: true } },
-          },
+  const [doneJobs, payments, overheads, projectCosts, labour, revenueShares] =
+    await Promise.all([
+      prisma.scheduledJob.findMany({
+        where: { status: "DONE", paidAt: { not: null }, date: { gte, lte } },
+        select: {
+          price: true,
+          wasteBags: true,
+          wasteBagPrice: true,
+          materialsCharge: true,
+          materialsPaid: true,
         },
-      },
-    }),
-    prisma.payment.findMany({
-      where: { date: { gte, lte } },
-      select: { amount: true },
-    }),
-    prisma.overhead.findMany({
-      where: { date: { gte, lte } },
-      select: { amount: true },
-    }),
-    prisma.projectCost.findMany({
-      where: { date: { gte, lte } },
-      select: { amount: true, reimbursable: true },
-    }),
-    prisma.crewLabour.findMany({
-      where: { date: { gte, lte } },
-      select: { amount: true },
-    }),
-  ]);
+      }),
+      prisma.payment.findMany({
+        where: { date: { gte, lte } },
+        select: { amount: true },
+      }),
+      prisma.overhead.findMany({
+        where: { date: { gte, lte } },
+        select: { amount: true },
+      }),
+      prisma.projectCost.findMany({
+        where: { date: { gte, lte } },
+        select: { amount: true, reimbursable: true },
+      }),
+      prisma.crewLabour.findMany({
+        where: { date: { gte, lte } },
+        select: { amount: true },
+      }),
+      prisma.revenueShareWeek.findMany({
+        where: { weekStart: { gte, lte } },
+        select: { amount: true },
+      }),
+    ]);
 
   return summarizeMoney({
     jobs: doneJobs,
@@ -161,6 +151,7 @@ export async function getRangeSummary(from: Date, to: Date): Promise<RangeSummar
     overheads,
     projectCosts,
     labour,
+    revenueShares,
   });
 }
 
@@ -264,6 +255,7 @@ export function costLinesForMonth(input: {
     reimbursable?: boolean;
   }[];
   labour: { amount: number; name?: string | null }[];
+  revenueShares: { amount: number; name?: string | null }[];
 }): YearMonthCost[] {
   const lines: YearMonthCost[] = [];
 
@@ -299,19 +291,18 @@ export function costLinesForMonth(input: {
     });
   }
 
-  const share = revenueShareCostForJobs(
-    input.jobs.map((j) => ({
-      price: j.price,
-      wasteBags: j.wasteBags,
-      wasteBagPrice: j.wasteBagPrice,
-      materialsCharge: j.materialsCharge,
-      sharePercent:
-        j.customer?.revenueShare?.active === true
-          ? j.customer.revenueShare.percent
-          : null,
-    }))
-  );
-  if (share > 0) lines.push({ label: "Revenue share", amount: share });
+  const sharesByName = new Map<string, number>();
+  for (const share of input.revenueShares) {
+    if (share.amount <= 0) continue;
+    const label = namedAmount(share.name, "Revenue share");
+    sharesByName.set(label, (sharesByName.get(label) ?? 0) + share.amount);
+  }
+  for (const [name, amount] of sharesByName) {
+    lines.push({
+      label: name === "Revenue share" ? name : `${name} revenue share`,
+      amount,
+    });
+  }
 
   return lines.sort((a, b) => b.amount - a.amount);
 }
@@ -335,6 +326,7 @@ export function bucketYearMonths(
       category?: string;
     }>[];
     labour: Dated<{ amount: number; name?: string | null }>[];
+    revenueShares: Dated<{ amount: number; name?: string | null }>[];
   }
 ): YearMonthRow[] {
   const nowKey = calendarMonthKey(now);
@@ -346,12 +338,14 @@ export function bucketYearMonths(
     const overheads = inMonth(data.overheads);
     const projectCosts = inMonth(data.projectCosts);
     const labour = inMonth(data.labour);
+    const revenueShares = inMonth(data.revenueShares);
     const summary = summarizeMoney({
       jobs,
       payments: inMonth(data.payments),
       overheads,
       projectCosts,
       labour,
+      revenueShares,
     });
     return {
       key,
@@ -360,7 +354,13 @@ export function bucketYearMonths(
       profit: summary.profit,
       isCurrent: key === nowKey,
       isFuture: key > nowKey,
-      costs: costLinesForMonth({ jobs, overheads, projectCosts, labour }),
+      costs: costLinesForMonth({
+        jobs,
+        overheads,
+        projectCosts,
+        labour,
+        revenueShares,
+      }),
     };
   });
 }
@@ -372,7 +372,8 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
   const gte = startOfDay(from);
   const lte = endOfDay(to);
 
-  const [jobs, payments, overheads, projectCosts, labour] = await Promise.all([
+  const [jobs, payments, overheads, projectCosts, labour, revenueShareWeeks] =
+    await Promise.all([
     prisma.scheduledJob.findMany({
       where: { status: "DONE", paidAt: { not: null }, date: { gte, lte } },
       select: {
@@ -383,11 +384,6 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
         materialsCharge: true,
         materialsPaid: true,
         materialsNote: true,
-        customer: {
-          select: {
-            revenueShare: { select: { percent: true, active: true } },
-          },
-        },
       },
     }),
     prisma.payment.findMany({
@@ -412,6 +408,14 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
       where: { date: { gte, lte } },
       select: { date: true, amount: true, name: true },
     }),
+    prisma.revenueShareWeek.findMany({
+      where: { weekStart: { gte, lte } },
+      select: {
+        weekStart: true,
+        amount: true,
+        share: { select: { name: true } },
+      },
+    }),
   ]);
 
   return bucketYearMonths(year, now, {
@@ -420,6 +424,11 @@ export async function getYearMonths(now = new Date()): Promise<YearMonthRow[]> {
     overheads,
     projectCosts,
     labour,
+    revenueShares: revenueShareWeeks.map((week) => ({
+      date: week.weekStart,
+      amount: week.amount,
+      name: week.share.name,
+    })),
   });
 }
 
@@ -624,11 +633,11 @@ export type RevenueShareWeekRow = {
   label: string;
   jobs: number;
   labourTakings: number;
-  /** Live figure from current job data. */
+  /** Percentage calculation retained as context only; never booked as a cost. */
   shareOwed: number;
-  /** Snapshotted figure, set when the week was marked as sent. */
-  sentAmount: number | null;
-  sentAt: Date | null;
+  /** Manually entered weekly cost. This is the authoritative Money figure. */
+  manualAmount: number | null;
+  savedAt: Date | null;
 };
 
 export type RevenueShareDealWeeks = {
@@ -639,11 +648,11 @@ export type RevenueShareDealWeeks = {
   customerCount: number;
   /** The week we're in now — resets every Monday. */
   current: RevenueShareWeekRow & { lines: RevenueShareLine[] };
-  /** Earlier weeks, newest first. Empty weeks that were never sent are skipped. */
+  /** Earlier weeks, newest first, including empty weeks for backfilling. */
   history: RevenueShareWeekRow[];
-  /** Everything marked as sent, all time. */
-  totalSent: number;
-  weeksSent: number;
+  /** Everything manually recorded, all time. */
+  totalRecorded: number;
+  weeksRecorded: number;
 };
 
 /**
@@ -688,21 +697,37 @@ function toPence(amount: number): number {
 
 /**
  * Revenue-share deals broken down by calendar week (Mon–Sun): the week in
- * progress plus the previous `weeksBack` weeks. Each week's figure is the
- * labour takings of DONE jobs for that deal's tagged customers × the percent.
- * Weeks already marked as sent keep their snapshotted amount.
+ * progress plus the previous `weeksBack` weeks. Job and percentage figures are
+ * reference context only. Stored weekly amounts are manually entered costs.
  */
+export function revenueShareWeekStarts(
+  currentWeek: Date,
+  firstWeek: Date
+): Date[] {
+  const current = startOfWeek(currentWeek);
+  const first = startOfWeek(firstWeek);
+  const weekMs = 7 * 86_400_000;
+  const weeks = Math.max(
+    0,
+    Math.round((current.getTime() - first.getTime()) / weekMs)
+  );
+  return Array.from({ length: weeks + 1 }, (_, i) =>
+    addDays(current, -7 * i)
+  );
+}
+
 export async function getRevenueShareWeeks({
   weeksBack = 8,
   shareId,
   now = new Date(),
+  includeAllHistory = false,
 }: {
   weeksBack?: number;
   shareId?: number;
   now?: Date;
+  includeAllHistory?: boolean;
 } = {}): Promise<RevenueShareDealWeeks[]> {
   const currentWeekStart = startOfWeek(now);
-  const firstWeekStart = addDays(currentWeekStart, -7 * weeksBack);
 
   const deals = await prisma.revenueShare.findMany({
     where: shareId != null ? { id: shareId } : { active: true },
@@ -717,6 +742,25 @@ export async function getRevenueShareWeeks({
   const customerIds = [
     ...new Set(deals.flatMap((d) => d.customers.map((c) => c.id))),
   ];
+
+  let firstWeekStart = addDays(currentWeekStart, -7 * weeksBack);
+  if (includeAllHistory) {
+    const oldestJob =
+      customerIds.length > 0
+        ? await prisma.scheduledJob.aggregate({
+            where: { customerId: { in: customerIds } },
+            _min: { date: true },
+          })
+        : null;
+    const candidates = [
+      firstWeekStart,
+      ...(oldestJob?._min.date ? [oldestJob._min.date] : []),
+      ...deals.flatMap((deal) => deal.weeks.map((week) => week.weekStart)),
+    ];
+    firstWeekStart = candidates.reduce((oldest, date) =>
+      date.getTime() < oldest.getTime() ? date : oldest
+    );
+  }
 
   const jobs =
     customerIds.length > 0
@@ -756,14 +800,15 @@ export async function getRevenueShareWeeks({
     byWeek.set(weekKey, week);
   }
 
-  const weekStarts = Array.from({ length: weeksBack + 1 }, (_, i) =>
-    addDays(currentWeekStart, -7 * i)
+  const weekStarts = revenueShareWeekStarts(
+    currentWeekStart,
+    firstWeekStart
   );
 
   return deals.map((deal) => {
     const ids = new Set(deal.customers.map((c) => c.id));
     const nameById = new Map(deal.customers.map((c) => [c.id, c.name]));
-    const sentByWeek = new Map(
+    const savedByWeek = new Map(
       deal.weeks.map((w) => [toDateInput(w.weekStart), w])
     );
 
@@ -785,7 +830,7 @@ export async function getRevenueShareWeeks({
         lines.sort((a, b) => b.shareOwed - a.shareOwed);
       }
       const labourTakings = sum(lines.map((l) => l.labourTakings));
-      const sent = sentByWeek.get(weekKey);
+      const saved = savedByWeek.get(weekKey);
       return {
         row: {
           weekKey,
@@ -793,8 +838,8 @@ export async function getRevenueShareWeeks({
           jobs: sum(lines.map((l) => l.jobs)),
           labourTakings,
           shareOwed: toPence((labourTakings * deal.percent) / 100),
-          sentAmount: sent ? sent.amount : null,
-          sentAt: sent ? sent.sentAt : null,
+          manualAmount: saved ? saved.amount : null,
+          savedAt: saved ? saved.sentAt : null,
         } satisfies RevenueShareWeekRow,
         lines,
       };
@@ -803,8 +848,7 @@ export async function getRevenueShareWeeks({
     const current = build(weekStarts[0]);
     const history = weekStarts
       .slice(1)
-      .map((w) => build(w).row)
-      .filter((r) => r.jobs > 0 || r.sentAmount != null);
+      .map((w) => build(w).row);
 
     return {
       id: deal.id,
@@ -814,15 +858,15 @@ export async function getRevenueShareWeeks({
       customerCount: deal.customers.length,
       current: { ...current.row, lines: current.lines },
       history,
-      totalSent: sum(deal.weeks.map((w) => w.amount)),
-      weeksSent: deal.weeks.length,
+      totalRecorded: sum(deal.weeks.map((w) => w.amount)),
+      weeksRecorded: deal.weeks.length,
     };
   });
 }
 
 /**
- * Recompute one deal's figure for one calendar week. Used when settling a week
- * so the stored amount always comes from the server, not the form.
+ * Recompute one deal's reference figures for one calendar week. Manual saves
+ * retain this job/labour context but use the amount entered in the form.
  */
 export async function computeRevenueShareWeek(
   shareId: number,

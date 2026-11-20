@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import {
-  setJobStatus,
   updateJobNotes,
   moveJob,
   deleteJob,
 } from "@/app/actions/jobs";
 import { InlineJobPrice } from "@/components/InlineJobPrice";
+import { JobStatusToggle } from "@/components/JobStatusToggle";
 import { formatHourlyBreakdown } from "@/lib/money";
 import {
-  CheckIcon,
   ChevronUpIcon,
   ChevronDownIcon,
   TrashIcon,
@@ -25,6 +24,7 @@ export type JobRowData = {
   title: string;
   price: number;
   status: "SCHEDULED" | "DONE" | "SKIPPED";
+  statusVersion: number;
   pricingType?: "FIXED" | "HOURLY";
   hourlyRate?: number | null;
   hours?: number | null;
@@ -138,21 +138,11 @@ export function JobRow({
         </div>
       )}
       {/* Just marks the work done — payments live on the Paid page. */}
-      <form action={setJobStatus} className="shrink-0">
-        <input type="hidden" name="id" value={job.id} />
-        <input type="hidden" name="status" value={done ? "SCHEDULED" : "DONE"} />
-        <button
-          type="submit"
-          aria-label={done ? "Mark not done" : "Mark done"}
-          className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 transition-colors ${
-            done
-              ? "border-lime-500 bg-lime-500 text-white"
-              : "border-stone-300 text-transparent hover:border-lime-500 active:bg-lime-100"
-          }`}
-        >
-          <CheckIcon className="h-5 w-5" />
-        </button>
-      </form>
+      <JobStatusToggle
+        id={job.id}
+        status={job.status}
+        statusVersion={job.statusVersion}
+      />
 
       <div className="min-w-0 flex-1">
         <div

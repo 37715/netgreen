@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
-import { formatDayLabel } from "@/lib/dates";
 import type { RevenueShareDealWeeks } from "@/lib/finance";
-import { RevenueShareWeekList } from "@/components/RevenueShareWeeks";
 import {
-  markRevenueShareWeekSent,
-  unmarkRevenueShareWeekSent,
-} from "@/app/actions/revenueShares";
+  RevenueShareWeekList,
+  RevenueShareWeekRowItem,
+} from "@/components/RevenueShareWeeks";
 
 export function RevenueShareCard({
   deals,
@@ -26,8 +24,8 @@ export function RevenueShareCard({
               Revenue share
             </h2>
             <p className="mt-0.5 text-xs text-stone-500">
-              Pay someone a % of labour takings from a tagged customer book,
-              worked out fresh every week.
+              Enter the agreed amount for each week. Saved amounts feed directly
+              into Money as business costs.
             </p>
           </div>
           <Link
@@ -45,8 +43,6 @@ export function RevenueShareCard({
     <div className="mt-4 space-y-3">
       {deals.map((deal) => {
         const week = deal.current;
-        const sent = week.sentAmount != null;
-        const dueNow = sent ? week.sentAmount! : week.shareOwed;
 
         return (
           <div key={deal.id} className="card p-5">
@@ -59,17 +55,21 @@ export function RevenueShareCard({
                   {deal.name}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
-                  {deal.percent}% of labour takings · {deal.customerCount}{" "}
+                  Manual weekly cost · {deal.customerCount}{" "}
                   {deal.customerCount === 1 ? "customer" : "customers"} ·{" "}
                   {week.jobs} {week.jobs === 1 ? "job" : "jobs"} done
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <div className="ledger sum text-2xl font-extrabold text-clay-600">
-                  {formatMoney(dueNow, currency)}
-                </div>
+                {week.manualAmount == null ? (
+                  <div className="text-sm font-bold text-clay-600">Not entered</div>
+                ) : (
+                  <div className="ledger sum text-2xl font-extrabold text-clay-600">
+                    {formatMoney(week.manualAmount, currency)}
+                  </div>
+                )}
                 <div className="text-xs text-stone-400">
-                  on {formatMoney(week.labourTakings, currency)} labour
+                  this week&rsquo;s Money cost
                 </div>
               </div>
             </div>
@@ -90,9 +90,6 @@ export function RevenueShareCard({
                         {formatMoney(line.labourTakings, currency)} labour
                       </div>
                     </div>
-                    <span className="ledger shrink-0 text-sm font-bold text-stone-900">
-                      {formatMoney(line.shareOwed, currency)}
-                    </span>
                   </li>
                 ))}
               </ul>
@@ -102,55 +99,26 @@ export function RevenueShareCard({
               </p>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 px-3.5 py-3">
-              {sent ? (
-                <>
-                  <p className="text-xs text-stone-600">
-                    This week is settled at{" "}
-                    <span className="ledger font-bold text-stone-800">
-                      {formatMoney(week.sentAmount!, currency)}
-                    </span>
-                    {week.sentAt ? ` · sent ${formatDayLabel(week.sentAt)}` : ""}
-                  </p>
-                  <form action={unmarkRevenueShareWeekSent}>
-                    <input type="hidden" name="id" value={deal.id} />
-                    <input type="hidden" name="weekStart" value={week.weekKey} />
-                    <button
-                      type="submit"
-                      className="btn-ghost !py-1.5 !text-xs"
-                    >
-                      Undo
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs text-stone-600">
-                    Resets every Monday. Mark it sent and the figure is locked,
-                    even if you edit those jobs later.
-                  </p>
-                  <form action={markRevenueShareWeekSent}>
-                    <input type="hidden" name="id" value={deal.id} />
-                    <input type="hidden" name="weekStart" value={week.weekKey} />
-                    <button
-                      type="submit"
-                      className="btn-secondary !py-1.5 !text-xs"
-                      disabled={week.shareOwed <= 0}
-                    >
-                      Mark this week sent
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
+            <p className="mt-3 text-xs text-stone-500">
+              {deal.percent}% would be {formatMoney(week.shareOwed, currency)}
+              {" "}from the tagged jobs, for reference only. Money uses the amount
+              you save below.
+            </p>
+            <ul className="mt-2 rounded-xl bg-stone-50 px-3.5">
+              <RevenueShareWeekRowItem
+                shareId={deal.id}
+                row={week}
+                currency={currency}
+              />
+            </ul>
 
             <div className="mt-4 border-t border-stone-100 pt-3">
               <RevenueShareWeekList
                 shareId={deal.id}
                 rows={deal.history.slice(0, historyLimit)}
                 currency={currency}
-                totalSent={deal.totalSent}
-                weeksSent={deal.weeksSent}
+                totalRecorded={deal.totalRecorded}
+                weeksRecorded={deal.weeksRecorded}
               />
             </div>
 
